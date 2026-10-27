@@ -37,38 +37,11 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "版本号: $v"
 
-      - name: 构建 ipk
+      # build_ipk.py 构建完成后会自检：ar 魔数、必需文件是否齐全、
+      # 脚本是否 LF 换行。任一项不过直接非零退出，CI 即标红。
+      # 校验用纯标准库实现，不依赖镜像里是否装了 binutils。
+      - name: 构建并校验 ipk
         run: python3 openwrt/build_ipk.py
-
-      - name: 校验包结构
-        run: |
-          set -e
-          f="ipk/luci-app-catfind_${{ steps.ver.outputs.version }}_all.ipk"
-          test -f "$f" || { echo "::error::未生成 $f"; exit 1; }
-
-          echo "--- ar 成员 ---"
-          ar t "$f"
-          echo "--- data.tar.gz 内容 ---"
-          ar p "$f" data.tar.gz | tar tzvf -
-
-          # 必须包含游戏本体和 LuCI 界面，缺一个就是打包漏文件
-          ar p "$f" data.tar.gz | tar tzf - | grep -qx './www/catfind/index.html' \
-            || { echo "::error::包里缺少 index.html"; exit 1; }
-          ar p "$f" data.tar.gz | tar tzf - | grep -qx './usr/lib/lua/luci/model/cbi/catfind.lua' \
-            || { echo "::error::包里缺少 LuCI 界面"; exit 1; }
-
-          echo "--- 换行检查（脚本必须是 LF，否则路由器执行失败）---"
-          tmp=$(mktemp -d)
-          ar p "$f" data.tar.gz | tar xz -C "$tmp"
-          bad=0
-          for s in etc/init.d/catfind www/catfind/cgi-bin/progress www/cgi-bin/catfind-setlevel; do
-            if grep -qU $'\r' "$tmp/$s"; then
-              echo "::error::$s 含 CRLF"; bad=1
-            fi
-          done
-          [ "$bad" = "0" ] || exit 1
-          echo "换行 OK"
-          echo "包大小: $(stat -c%s "$f") 字节"
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
