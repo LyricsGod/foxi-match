@@ -1,5 +1,7 @@
 # 🐱 找猫游戏 CatFind（OpenWrt / LuCI）
 
+[![Build OpenWrt ipk](https://github.com/LyricsGod/foxi-match/actions/workflows/build-ipk.yml/badge.svg)](https://github.com/LyricsGod/foxi-match/actions/workflows/build-ipk.yml)
+
 一个跑在路由器上的逻辑解谜小游戏。纯前端单文件实现，附带 OpenWrt 软件包和 LuCI 管理界面。
 
 **玩法规则**
@@ -39,7 +41,25 @@ python3 build_ipk.py --deploy 192.168.2.1 --password 你的密码   # 构建并�
 
 需要 `pip install paramiko`（仅 `--deploy` 时需要）。
 
-### 方式三：OpenWrt SDK 编译
+### 方式三：直接下载 CI 构建好的 ipk
+
+每次往 `main` 推代码，GitHub Actions 都会自动构建 ipk：
+进 [Actions 页面](https://github.com/LyricsGod/foxi-match/actions) → 选最新的
+`Build OpenWrt ipk` → 在 Artifacts 里下载。
+
+打 `v*` 标签（如 `v1.2.1`）还会自动发 Release 并把 ipk 挂上去：
+
+```sh
+git tag v1.2.1 && git push origin v1.2.1
+```
+
+CI 会校验包结构（index.html 与 LuCI 界面是否齐全、脚本是否 LF 换行），
+任一项不过就标红失败。
+
+> 版本号以 `openwrt/control/control` 里的 `Version` 字段为**唯一来源**，
+> `build_ipk.py` 会自动读取，改版本只需改那一行。
+
+### 方式四：OpenWrt SDK 编译
 
 把 `openwrt/` 整个目录放到 SDK 的 `package/` 下，注意先把根目录的 `index.html`
 复制到 `openwrt/files/www/catfind/index.html`：
@@ -68,6 +88,9 @@ make package/luci-app-catfind/compile V=s
 .
 ├── index.html                 游戏本体（单文件，含全部 JS/CSS/音效）
 ├── README.md
+├── LICENSE                    MIT
+├── .github/workflows/
+│   └── build-ipk.yml          自动构建 + 校验 + 发 Release
 ├── openwrt/                   OpenWrt 打包源码
 │   ├── Makefile               SDK 编译用
 │   ├── build_ipk.py           免 SDK 直接打包 / SSH 部署

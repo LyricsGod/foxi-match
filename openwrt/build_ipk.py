@@ -24,7 +24,23 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
 PKG = "luci-app-catfind"
-VERSION = "1.2.1"
+
+
+def read_version() -> str:
+    """版本号以 openwrt/control/control 为唯一来源，避免和代码里的常量不同步"""
+    import re
+    path = os.path.join(HERE, "control", "control")
+    try:
+        with open(path, encoding="utf-8") as f:
+            m = re.search(r"^Version:\s*(\S+)\s*$", f.read(), re.M)
+    except OSError:
+        sys.exit("读不到 control 文件: " + path)
+    if not m:
+        sys.exit("control 文件里没有 Version 字段: " + path)
+    return m.group(1)
+
+
+VERSION = read_version()
 
 # (包内相对路径, 本地源文件, 权限)
 FILES = [
@@ -104,6 +120,15 @@ def make_ar(members) -> bytes:
     return out.getvalue()
 
 
+def read_script(name: str, fallback: str) -> str:
+    """优先用 control/ 下的实际脚本文件，缺失时退回内嵌常量"""
+    path = os.path.join(HERE, "control", name)
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    return fallback
+
+
 def build() -> str:
     data_items = []
     total = 0
@@ -118,8 +143,8 @@ def build() -> str:
 
     ctl_items = [
         ("./control", CONTROL.format(pkg=PKG, ver=VERSION, size=max(1, total // 1024)).encode(), 0o644),
-        ("./postinst", POSTINST.encode(), 0o755),
-        ("./prerm", PRERM.encode(), 0o755),
+        ("./postinst", read_script("postinst", POSTINST).encode(), 0o755),
+        ("./prerm", read_script("prerm", PRERM).encode(), 0o755),
     ]
 
     ipk = make_ar([
