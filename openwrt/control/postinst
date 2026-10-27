@@ -1,0 +1,7 @@
+#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] || {
+	/etc/init.d/catfind enable
+	/etc/init.d/catfind restart
+	rm -rf /tmp/luci-indexcache* /tmp/luci-modulecache 2>/dev/null
+}
+exit 0

@@ -1,0 +1,2431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#fdf6f2">
+<title>佛系趣消消 · 找猫</title>
+<style>
+  :root{
+    --blue:#3d7cf5;
+    --blue-d:#2f66d6;
+    --orange:#ff9f2e;
+    --green:#3fbf5f;
+    --ink:#2f2f36;
+    --ink2:#84858e;
+    --ink3:#b7b8c0;
+    --line:#eceef3;
+    --gap:2px;
+    --card-shadow:0 6px 18px rgba(96,110,142,.10);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0}
+  body{
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+    color:var(--ink);
+    background:
+      repeating-radial-gradient(circle at 50% 38%,
+        rgba(0,0,0,0) 0px, rgba(0,0,0,0) 42px,
+        rgba(0,0,0,.032) 42px, rgba(0,0,0,.032) 84px),
+      radial-gradient(circle at 50% -10%, #f6f9ff 0%, #ffffff 55%);
+    background-attachment:fixed;
+    display:flex; align-items:center; justify-content:center;
+    padding:12px 14px 16px;
+    -webkit-user-select:none; user-select:none;
+    overflow-x:hidden;
+  }
+  .app{width:min(440px,100%);display:flex;flex-direction:column;gap:10px}
+
+  /* ---------- 顶栏 ---------- */
+  .topbar{
+    display:grid;grid-template-columns:1fr auto 1fr;
+    align-items:center;gap:8px;padding:0 2px;
+  }
+  .tb-side{display:flex;align-items:center;gap:7px}
+  .tb-side.end{justify-content:flex-end}
+  .topbar .roundbtn svg{display:block}
+  .roundbtn{
+    appearance:none;flex:0 0 auto;
+    width:34px;height:34px;border-radius:50%;
+    border:none;background:#fff;
+    color:var(--ink2);font-size:15px;font-weight:700;font-family:inherit;
+    display:grid;place-items:center;cursor:pointer;padding:0;
+    box-shadow:var(--card-shadow);
+    transition:transform .12s,color .15s;
+  }
+  .roundbtn:active{transform:scale(.93)}
+  .roundbtn.on{color:var(--blue)}
+  .leveltitle{
+    font-size:19px;font-weight:800;letter-spacing:.5px;
+    color:var(--ink);white-space:nowrap;
+  }
+  .leveltitle b{color:var(--blue);font-size:21px;font-variant-numeric:tabular-nums}
+
+  /* ---------- 状态条 ---------- */
+  .statusrow{display:flex;align-items:stretch;gap:7px}
+  .statcard{
+    flex:1;min-width:0;
+    display:flex;align-items:center;justify-content:center;gap:4px;
+    background:#fff;border-radius:14px;
+    padding:7px 6px;
+    box-shadow:var(--card-shadow);
+    font-size:10.5px;color:var(--ink2);white-space:nowrap;
+    overflow:hidden;
+  }
+  .statcard b{font-size:13.5px;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:800}
+  .statcard span{font-size:10.5px;color:var(--ink2)}
+  .statcard.hearts{gap:1px;flex:0 0 auto;padding:7px 10px}
+  .statcard.hearts i{font-style:normal;font-size:12px;line-height:1;transition:transform .2s,opacity .2s}
+  .statcard.hearts i.off{opacity:.2;transform:scale(.8);filter:grayscale(1)}
+
+  /* ---------- 规则卡 ---------- */
+  .rules{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .rules div{
+    background:#fff;border-radius:12px;
+    padding:7px 3px 6px;
+    text-align:center;
+    box-shadow:var(--card-shadow);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    min-height:38px;
+  }
+  .rules span{font-size:8.5px;line-height:1;color:var(--ink3);letter-spacing:0;white-space:nowrap}
+  .rules b{font-size:10.5px;line-height:1;color:var(--ink);font-weight:800;white-space:nowrap}
+
+  /* ---------- 棋盘 ---------- */
+  .board-wrap{
+    --n:5;
+    display:grid;
+    grid-template-columns:13px minmax(0,1fr);
+    grid-template-rows:minmax(0,1fr) 13px;
+    gap:5px;
+    padding:9px;
+    background:#fff;
+    border-radius:24px;
+    box-shadow:0 12px 30px rgba(96,110,142,.13), 0 1px 2px rgba(96,110,142,.06);
+    position:relative;
+  }
+  .rowlabels{
+    grid-area:1/1;
+    display:grid;grid-template-rows:repeat(var(--n),1fr);gap:var(--gap);
+  }
+  .collabels{
+    grid-area:2/2;
+    display:grid;grid-template-columns:repeat(var(--n),1fr);gap:var(--gap);
+  }
+  .rowlabels span,.collabels span{
+    display:grid;place-items:center;
+    font-size:9.5px;font-weight:600;color:var(--ink3);
+    font-variant-numeric:tabular-nums;line-height:1;
+  }
+  .board{
+    --n:5;
+    grid-area:1/2;
+    display:grid;
+    grid-template-columns:repeat(var(--n),1fr);
+    gap:var(--gap);
+    aspect-ratio:1/1;
+    touch-action:none;
+    -webkit-touch-callout:none;
+    position:relative;
+    transition:opacity .18s;
+  }
+  .board.loading{opacity:.3}
+
+  .cell{
+    position:relative;
+    border-radius:18%;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 42%),
+      var(--c,#e9ecf2);
+    box-shadow:
+      inset 0 -2px 0 rgba(0,0,0,.055),
+      inset 0 1px 0 rgba(255,255,255,.55);
+    display:grid;place-items:center;
+    cursor:pointer;
+    overflow:hidden;
+    transition:transform .1s;
+  }
+  .cell:active{transform:scale(.96)}
+  .cell .pet{
+    width:84%;height:84%;
+    opacity:0;transform:scale(.3);
+    pointer-events:none;
+    filter:drop-shadow(0 1.5px 2px rgba(70,50,60,.18));
+    position:relative;z-index:2;
+  }
+  .cell.is-cow .pet{animation:petIn .48s cubic-bezier(.22,.9,.3,1.05) both}
+  @keyframes petIn{
+    0%{opacity:0;transform:scale(.28) translateY(11px) rotate(-17deg)}
+    48%{opacity:1;transform:scale(1.17) translateY(-3.5px) rotate(7deg)}
+    70%{transform:scale(.94) translateY(1.2px) rotate(-3.5deg)}
+    86%{transform:scale(1.04) translateY(-.4px) rotate(1.2deg)}
+    100%{opacity:1;transform:scale(1) translateY(0) rotate(0)}
+  }
+  .cell .xmark{
+    position:absolute;inset:0;opacity:0;transition:opacity .13s;
+    z-index:1;pointer-events:none;
+  }
+  .cell .xmark::before,.cell .xmark::after{
+    content:"";position:absolute;left:50%;top:50%;
+    width:42%;height:7.6%;min-height:2.6px;border-radius:99px;
+    background:#fff;
+    box-shadow:0 1px 2.5px rgba(70,50,60,.26);
+  }
+  .cell .xmark::before{transform:translate(-50%,-50%) rotate(45deg)}
+  .cell .xmark::after{transform:translate(-50%,-50%) rotate(-45deg)}
+  .cell.is-x .xmark{opacity:1;animation:xIn .17s ease-out both}
+  @keyframes xIn{
+    0%{opacity:0;transform:scale(.45)}
+    100%{opacity:1;transform:scale(1)}
+  }
+  .cell.is-bad{
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 42%),
+      linear-gradient(rgba(255,74,74,.20), rgba(255,74,74,.20)),
+      var(--c,#e9ecf2);
+    box-shadow:
+      inset 0 0 0 2px rgba(224,66,66,.42),
+      inset 0 -2px 0 rgba(0,0,0,.045);
+    cursor: default;
+  }
+  .cell.is-bad:active{transform:none}
+  .cell.is-bad .xmark{opacity:1}
+  .cell.is-bad .xmark::before,
+  .cell.is-bad .xmark::after{
+    background:#e04242;
+    box-shadow:0 1px 2px rgba(150,30,30,.28);
+  }
+  .cell.err{
+    background:linear-gradient(180deg,#ff9e9e,#ff7a7a) !important;
+    animation:shake .38s;
+  }
+  .cell.err .xmark{opacity:0}
+  .cell.hint{animation:pulse 1s ease 2}
+  @keyframes shake{
+    0%,100%{transform:translate(0,0)}
+    18%{transform:translate(-4px,1px)}
+    38%{transform:translate(4px,-1px)}
+    58%{transform:translate(-3px,1px)}
+    78%{transform:translate(3px,0)}
+  }
+  @keyframes pulse{
+    0%,100%{box-shadow:inset 0 0 0 0 rgba(61,124,245,0)}
+    50%{box-shadow:inset 0 0 0 4px rgba(61,124,245,.6)}
+  }
+
+  /* ---------- 工具条 ---------- */
+  .tools{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+  .tool{
+    appearance:none;border:none;
+    background:#fff;border-radius:16px;
+    padding:8px 2px 7px;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    font-size:10px;color:var(--ink2);cursor:pointer;font-family:inherit;
+    box-shadow:var(--card-shadow);
+    transition:transform .12s,color .16s,box-shadow .16s,background .16s;
+  }
+  .tool .ic{font-size:17px;line-height:1;font-style:normal}
+  .tool .tx{font-weight:600;letter-spacing:.2px;white-space:nowrap}
+  .tool:active{transform:scale(.95)}
+  .tool.active{
+    background:linear-gradient(180deg,#6ea3ff,#3d7cf5);
+    color:#fff;
+    box-shadow:0 8px 18px rgba(61,124,245,.35);
+  }
+  .tool:disabled{opacity:.38;pointer-events:none}
+  .tool .badge{
+    font-size:9px;background:rgba(61,124,245,.12);color:var(--blue);
+    border-radius:99px;padding:0 4px;font-weight:800;
+  }
+  .tool.active .badge{background:rgba(255,255,255,.28);color:#fff}
+
+  /* ---------- 底栏 ---------- */
+  .foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 2px}
+  .switch{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2);cursor:pointer;white-space:nowrap}
+  .switch input{display:none}
+  .switch .track{
+    width:30px;height:17px;border-radius:99px;background:#e2e5ec;
+    position:relative;transition:background .18s;flex:0 0 auto;
+  }
+  .switch .track::after{
+    content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;
+    border-radius:50%;background:#fff;transition:transform .18s;
+    box-shadow:0 1px 3px rgba(0,0,0,.15);
+  }
+  .switch input:checked + .track{background:var(--blue)}
+  .switch input:checked + .track::after{transform:translateX(13px)}
+
+  .ghostbtn{
+    appearance:none;border:none;background:none;font-family:inherit;
+    font-size:11px;color:var(--ink2);cursor:pointer;padding:5px 8px;border-radius:10px;
+  }
+  .ghostbtn:active{background:rgba(0,0,0,.04)}
+  .ghostbtn.on{color:var(--blue);font-weight:700}
+
+  /* ---------- 推理解释条 ---------- */
+  .explain{
+    position:fixed;left:50%;top:10px;
+    transform:translate(-50%,-14px);
+    width:min(420px,92vw);
+    background:#fff;border-radius:16px;
+    padding:12px 14px 12px 15px;
+    border-left:4px solid var(--blue);
+    box-shadow:0 14px 38px rgba(70,85,120,.24);
+    opacity:0;pointer-events:none;
+    transition:opacity .2s,transform .2s;
+    font-size:12.5px;line-height:1.6;color:var(--ink2);
+    z-index:75;
+  }
+  .explain.show{opacity:1;transform:translate(-50%,0)}
+  .explain b{color:var(--ink);font-weight:800}
+  .explain .tag{
+    display:inline-block;font-size:9.5px;font-weight:800;
+    color:var(--blue);background:rgba(61,124,245,.1);
+    padding:1.5px 7px;border-radius:99px;margin-right:6px;
+    vertical-align:1.5px;letter-spacing:.4px;
+  }
+  .explain .tag.warn{color:#c2410c;background:rgba(249,115,22,.12)}
+
+  /* ---------- 提示条 ---------- */
+  .toast{
+    position:fixed;left:50%;top:14px;transform:translate(-50%,-16px);
+    background:rgba(47,47,54,.94);color:#fff;font-size:12px;
+    padding:9px 15px;border-radius:999px;z-index:80;
+    opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+    max-width:86vw;text-align:center;line-height:1.4;
+    box-shadow:0 10px 26px rgba(60,60,80,.28);
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  /* ---------- 弹层 ---------- */
+  .overlay{
+    position:fixed;inset:0;z-index:70;display:none;
+    place-items:center;padding:22px;
+    background:rgba(47,47,54,.34);
+    -webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);
+  }
+  .overlay.show{display:grid;animation:fade .2s}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .modal{
+    width:min(330px,100%);
+    background:#fff;border-radius:26px;
+    padding:24px 20px 18px;text-align:center;
+    box-shadow:0 24px 64px rgba(70,80,110,.32);
+    animation:pop .3s cubic-bezier(.18,1.4,.5,1);
+  }
+  @keyframes pop{from{opacity:0;transform:scale(.9) translateY(10px)}to{opacity:1;transform:none}}
+  .modal .emoji{font-size:42px;line-height:1;margin-bottom:6px}
+  .modal h2{margin:0 0 4px;font-size:19px;letter-spacing:.3px}
+  .modal .sub{font-size:12px;color:var(--ink2);line-height:1.6;margin:0 0 14px}
+  .modal .statrow{display:flex;justify-content:center;gap:8px;margin:0 0 16px}
+  .modal .statrow div{flex:1;background:#f6f8fc;border-radius:14px;padding:9px 4px}
+  .modal .statrow b{display:block;font-size:15px;font-variant-numeric:tabular-nums}
+  .modal .statrow span{font-size:10px;color:var(--ink3)}
+  .modal .rules2{text-align:left;margin:0 0 16px;padding:0;list-style:none}
+  .modal .rules2 li{
+    display:flex;gap:8px;font-size:12px;color:var(--ink2);line-height:1.65;
+    padding:5px 0;border-bottom:1px dashed var(--line);
+  }
+  .modal .rules2 li:last-child{border-bottom:none}
+  .modal .rules2 li b{color:var(--ink);font-weight:700;flex:0 0 auto}
+  .pallist{
+    display:flex;flex-direction:column;gap:8px;
+    max-height:300px;overflow-y:auto;overscroll-behavior:contain;
+    margin:0 0 12px;padding:2px;
+  }
+  .palcard{
+    appearance:none;border:1.5px solid transparent;font-family:inherit;cursor:pointer;
+    display:flex;align-items:center;gap:11px;width:100%;
+    background:#f8f9fc;border-radius:14px;padding:9px 11px;text-align:left;
+    position:relative;transition:background .16s,border-color .16s,transform .12s;
+  }
+  .palcard:active{transform:scale(.98)}
+  .palcard.on{background:rgba(61,124,245,.08);border-color:rgba(61,124,245,.45)}
+  .paldots{display:grid;grid-template-columns:repeat(3,1fr);gap:2.5px;flex:0 0 auto}
+  .paldots i{width:9.5px;height:9.5px;border-radius:3px;display:block}
+  .palinfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+  .palinfo b{font-size:12.5px;color:var(--ink);font-weight:700}
+  .palinfo i{font-size:10px;color:var(--ink2);font-style:normal}
+  .palcheck{font-size:13px;color:var(--blue);font-weight:800;opacity:0;flex:0 0 auto}
+  .palcard.on .palcheck{opacity:1}
+  .paldel{
+    position:absolute;right:7px;top:5px;width:19px;height:19px;
+    border:none;background:rgba(0,0,0,.07);border-radius:50%;
+    color:var(--ink2);font-size:11px;line-height:1;cursor:pointer;
+    display:grid;place-items:center;padding:0;font-family:inherit;
+  }
+  .palnew{
+    width:100%;padding:11px;border-radius:14px;
+    border:1.5px dashed rgba(61,124,245,.4);
+    background:rgba(61,124,245,.04);color:var(--blue);
+    font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;
+  }
+  .paledit{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:0 0 12px}
+  .paledit label{
+    position:relative;aspect-ratio:1/1;border-radius:13px;overflow:hidden;
+    cursor:pointer;display:block;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.06);
+  }
+  .paledit input[type=color]{
+    position:absolute;inset:0;width:100%;height:100%;
+    border:none;padding:0;background:none;cursor:pointer;display:block;
+  }
+  .paledit input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+  .paledit input[type=color]::-webkit-color-swatch{border:none}
+  .palname-in{
+    width:100%;padding:11px 13px;border-radius:13px;
+    border:1.5px solid var(--line);background:#fbfcfe;
+    font-family:inherit;font-size:13px;color:var(--ink);
+    margin:0;display:block;
+  }
+  .palname-in:focus{outline:none;border-color:rgba(61,124,245,.5);background:#fff}
+
+  .sfxtop{
+    display:flex;align-items:center;justify-content:space-between;
+    background:#f6f8fc;border-radius:14px;padding:10px 12px;margin:0 0 12px;
+    font-size:12.5px;color:var(--ink);font-weight:600;
+  }
+  .sfxlist{display:flex;flex-direction:column;gap:7px;margin:0 0 16px}
+  .sfxrow{
+    appearance:none;border:1.5px solid transparent;font-family:inherit;cursor:pointer;
+    display:flex;align-items:center;gap:10px;width:100%;
+    background:#f8f9fc;border-radius:14px;padding:9px 11px;text-align:left;
+    transition:background .16s,border-color .16s,transform .12s;
+  }
+  .sfxrow:active{transform:scale(.98)}
+  .sfxrow.on{background:rgba(61,124,245,.08);border-color:rgba(61,124,245,.45)}
+  .sfxrow .sfxico{font-size:17px;line-height:1;width:20px;text-align:center;flex:0 0 auto}
+  .sfxrow .sfxtxt{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+  .sfxrow .sfxtxt b{font-size:12.5px;color:var(--ink);font-weight:700}
+  .sfxrow .sfxtxt i{font-size:10.5px;color:var(--ink2);font-style:normal;line-height:1.3}
+  .sfxrow .sfxchk{font-size:13px;color:var(--blue);font-weight:800;opacity:0;flex:0 0 auto}
+  .sfxrow.on .sfxchk{opacity:1}
+
+  .levelgrid{
+    display:grid;grid-template-columns:repeat(5,1fr);gap:8px;
+    max-height:236px;overflow-y:auto;overscroll-behavior:contain;
+    margin:0 0 16px;padding:2px;
+  }
+  .lvbtn{
+    appearance:none;border:none;font-family:inherit;cursor:pointer;
+    aspect-ratio:1/1;border-radius:13px;
+    background:#f4f6fa;color:var(--ink2);
+    font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;
+    display:grid;place-items:center;position:relative;
+    transition:transform .12s,background .16s;
+  }
+  .lvbtn.done{background:rgba(61,124,245,.10);color:var(--blue)}
+  .lvbtn.done::after{
+    content:"✓";position:absolute;right:5px;top:2px;
+    font-size:8px;font-weight:800;opacity:.75;
+  }
+  .lvbtn.cur{
+    background:linear-gradient(180deg,#5a94ff,#3d7cf5);color:#fff;
+    box-shadow:0 6px 14px rgba(61,124,245,.32);
+  }
+  .lvbtn.locked{opacity:.3;cursor:default}
+  .lvbtn:active{transform:scale(.94)}
+
+  .btn{
+    appearance:none;border:none;font-family:inherit;cursor:pointer;
+    width:100%;padding:12px;border-radius:16px;
+    font-size:14px;font-weight:800;letter-spacing:.4px;
+    transition:transform .12s,box-shadow .16s;
+  }
+  .btn + .btn{margin-top:8px}
+  .btn.primary{
+    color:#fff;
+    background:linear-gradient(180deg,#5a94ff,#3d7cf5);
+    box-shadow:0 10px 22px rgba(61,124,245,.34);
+  }
+  .btn.soft{background:#f4f6fa;color:var(--ink2)}
+  .btn:active{transform:scale(.97)}
+
+  @media (max-height:800px){
+    body{padding:8px 12px 10px}
+    .app{gap:8px}
+    .board-wrap{padding:7px;border-radius:20px}
+    .rules div{min-height:34px}
+    .leveltitle{font-size:17px}
+    .leveltitle b{font-size:19px}
+  }
+  @media (max-width:380px){
+    .leveltitle{font-size:16px}
+    .leveltitle b{font-size:18px}
+    .statcard{font-size:9.5px;padding:6px 4px}
+    .tool{font-size:9px}
+    .rules span{font-size:8px}
+    .rules b{font-size:9.5px}
+    .rules div{min-height:32px}
+  }
+</style>
+</head>
+<body>
+
+<!-- 猫咪图案 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="cat" viewBox="0 0 100 100">
+    <path d="M19 45 L22 9 L48 27 Z" fill="#f0b183" stroke="#ecdcd0" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M81 45 L78 9 L52 27 Z" fill="#f0b183" stroke="#ecdcd0" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M26 39 L27.5 17 L41 27 Z" fill="#f79cb0"/>
+    <path d="M74 39 L72.5 17 L59 27 Z" fill="#f79cb0"/>
+    <ellipse cx="50" cy="58" rx="34" ry="30" fill="#ffffff" stroke="#ecdcd0" stroke-width="2"/>
+    <path d="M43 33.5 V44" stroke="#f0b183" stroke-width="3.8" stroke-linecap="round"/>
+    <path d="M50 31.5 V43" stroke="#f0b183" stroke-width="3.8" stroke-linecap="round"/>
+    <path d="M57 33.5 V44" stroke="#f0b183" stroke-width="3.8" stroke-linecap="round"/>
+    <path d="M17 61 L4.5 57" stroke="#d3bbaa" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M17 67 L4.5 68.5" stroke="#d3bbaa" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M83 61 L95.5 57" stroke="#d3bbaa" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M83 67 L95.5 68.5" stroke="#d3bbaa" stroke-width="2.4" stroke-linecap="round"/>
+    <ellipse cx="26" cy="69" rx="6.5" ry="3.8" fill="#ffb0c3" opacity=".75"/>
+    <ellipse cx="74" cy="69" rx="6.5" ry="3.8" fill="#ffb0c3" opacity=".75"/>
+    <ellipse cx="37.5" cy="57" rx="6.4" ry="7.4" fill="#3b3237"/>
+    <ellipse cx="62.5" cy="57" rx="6.4" ry="7.4" fill="#3b3237"/>
+    <circle cx="39.6" cy="54.2" r="2.3" fill="#fff"/>
+    <circle cx="64.6" cy="54.2" r="2.3" fill="#fff"/>
+    <path d="M50 63.5 L46.2 68.6 Q50 71.8 53.8 68.6 Z" fill="#f79cb0"/>
+    <path d="M50 71 Q46 76 42.2 72.8" stroke="#c4ad9c" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M50 71 Q54 76 57.8 72.8" stroke="#c4ad9c" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </symbol>
+</svg>
+
+<div class="app">
+  <div class="topbar">
+    <div class="tb-side">
+      <button class="roundbtn" id="btnHelp" title="玩法说明">?</button>
+      <button class="roundbtn" id="btnPalette" title="棋盘配色">
+        <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="4.6" cy="4.6" r="2.9" fill="#5EC2F5"/>
+          <circle cx="11.4" cy="4.6" r="2.9" fill="#FF8FB0"/>
+          <circle cx="4.6" cy="11.4" r="2.9" fill="#5FD68E"/>
+          <circle cx="11.4" cy="11.4" r="2.9" fill="#FFD34E"/>
+        </svg>
+      </button>
+      <button class="roundbtn" id="btnLevels" title="选择关卡">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <rect x="0.4" y="0.4" width="4.4" height="4.4" rx="1.3"/>
+          <rect x="5.8" y="0.4" width="4.4" height="4.4" rx="1.3"/>
+          <rect x="11.2" y="0.4" width="4.4" height="4.4" rx="1.3"/>
+          <rect x="0.4" y="5.8" width="4.4" height="4.4" rx="1.3"/>
+          <rect x="5.8" y="5.8" width="4.4" height="4.4" rx="1.3"/>
+          <rect x="11.2" y="5.8" width="4.4" height="4.4" rx="1.3"/>
+          <rect x="0.4" y="11.2" width="4.4" height="4.4" rx="1.3"/>
+          <rect x="5.8" y="11.2" width="4.4" height="4.4" rx="1.3"/>
+          <rect x="11.2" y="11.2" width="4.4" height="4.4" rx="1.3"/>
+        </svg>
+      </button>
+    </div>
+    <div class="leveltitle" id="levelTitle">第 <b>1</b> 关</div>
+    <div class="tb-side end">
+      <button class="roundbtn" id="btnSound">🔊</button>
+    </div>
+  </div>
+
+  <div class="statusrow">
+    <div class="statcard"><span>剩余</span><b id="hudLeft">5</b><span>只</span></div>
+    <div class="statcard hearts" id="lives"></div>
+    <div class="statcard"><span>用时</span><b id="hudTime">00:00</b></div>
+  </div>
+
+  <div class="rules" id="rulebar"></div>
+
+  <div class="board-wrap" id="boardWrap">
+    <div class="rowlabels" id="rowLabels"></div>
+    <div class="board" id="board"></div>
+    <div class="collabels" id="colLabels"></div>
+  </div>
+
+  <div class="tools">
+    <button class="tool" id="btnClear"><i class="ic">🗑</i><span class="tx">清标记</span></button>
+    <button class="tool" id="btnFind"><i class="ic">🐱</i><span class="tx">找猫 <b class="badge" id="findN">3</b></span></button>
+    <button class="tool" id="btnHint"><i class="ic">💡</i><span class="tx">提示 <b class="badge" id="hintN">3</b></span></button>
+    <button class="tool" id="btnRestart"><i class="ic">↻</i><span class="tx">重玩</span></button>
+  </div>
+
+  <div class="foot">
+    <label class="switch">
+      <input type="checkbox" id="optAuto">
+      <span class="track"></span>
+      <span>自动标记</span>
+    </label>
+    <button class="ghostbtn on" id="btnDaily">📅 每日挑战</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="explain" id="explain"></div>
+<div class="overlay" id="overlay"></div>
+
+<script>
+/* =========================================================================
+   1. 基础工具
+   ========================================================================= */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function shuffledArr(n, rng){
+  const a = new Array(n);
+  for (let i = 0; i < n; i++) a[i] = i;
+  for (let i = n - 1; i > 0; i--){
+    const j = (rng() * (i + 1)) | 0;
+    const t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+/* =========================================================================
+   2. 关卡生成
+   规则：N×N 网格 / 分成 N 个连通色块 / 每行每列每色块各 1 只猫 / 猫不能相邻(含对角)
+   做法：先随机造一个合法解 → 随机生长出含解色块 → 用求解器找出“第二解”
+         → 定向移动格子把第二解破坏 → 反复直到唯一解
+   ========================================================================= */
+
+// 2.1 随机生成一个合法解（每行一只，列不重复，相邻两行列距 ≥2）
+function makeSolution(n, rng){
+  const cols = new Int8Array(n).fill(-1);
+  const used = new Uint8Array(n);
+  function rec(r){
+    if (r === n) return true;
+    const order = shuffledArr(n, rng);
+    for (let k = 0; k < n; k++){
+      const c = order[k];
+      if (used[c]) continue;
+      if (r > 0 && Math.abs(c - cols[r - 1]) < 2) continue;
+      used[c] = 1; cols[r] = c;
+      if (rec(r + 1)) return true;
+      used[c] = 0; cols[r] = -1;
+    }
+    return false;
+  }
+  return rec(0) ? cols : null;
+}
+
+// 2.2 以猫为种子随机生长出 n 个连通色块
+function growRegions(n, sol, rng){
+  const total = n * n;
+  const region = new Int16Array(total).fill(-1);
+  for (let r = 0; r < n; r++) region[r * n + sol[r]] = r;
+  let left = total - n;
+  let guard = total * 40;
+  while (left > 0 && guard-- > 0){
+    const rid = (rng() * n) | 0;
+    const cands = [];
+    for (let i = 0; i < total; i++){
+      if (region[i] !== -1) continue;
+      const r = (i / n) | 0, c = i % n;
+      if ((r > 0 && region[i - n] === rid) || (r < n - 1 && region[i + n] === rid) ||
+          (c > 0 && region[i - 1] === rid) || (c < n - 1 && region[i + 1] === rid)) cands.push(i);
+    }
+    if (!cands.length) continue;
+    region[cands[(rng() * cands.length) | 0]] = rid; left--;
+  }
+  if (left > 0) return null;
+  return region;
+}
+
+// 2.2b 均衡生长：总是让最小的色块先扩张，区域大小均匀、无需求解器
+function growBalanced(n, seedSol, rng){
+  const total = n * n;
+  const region = new Int16Array(total).fill(-1);
+  const sizes = new Int16Array(n);
+  for (let r = 0; r < n; r++){ region[r * n + seedSol[r]] = r; sizes[r] = 1; }
+
+  let left = total - n;
+  let guard = total * 80;
+  while (left > 0 && guard-- > 0){
+    const order = [];
+    for (let g = 0; g < n; g++) order.push(g);
+    order.sort((a, b) => sizes[a] - sizes[b]);
+
+    let placed = false;
+    for (let k = 0; k < order.length && !placed; k++){
+      const g = order[k];
+      const cands = [];
+      for (let i = 0; i < total; i++){
+        if (region[i] !== -1) continue;
+        const r = (i / n) | 0, c = i % n;
+        if ((r > 0 && region[i - n] === g) || (r < n - 1 && region[i + n] === g) ||
+            (c > 0 && region[i - 1] === g) || (c < n - 1 && region[i + 1] === g)) cands.push(i);
+      }
+      if (!cands.length) continue;
+      region[cands[(rng() * cands.length) | 0]] = g;
+      sizes[g]++; left--; placed = true;
+    }
+    if (!placed) return growRegions(n, seedSol, rng);
+  }
+  return left > 0 ? growRegions(n, seedSol, rng) : region;
+}
+
+// 2.3 求解器：最多收集 limit 个解
+function collectSolutions(n, region, limit){
+  const out = [];
+  const usedCol = new Uint8Array(n), usedReg = new Uint8Array(n), place = new Int8Array(n);
+
+  // 预计算：每个色块在每一行占据哪些列（位掩码），让可行性检查从 O(n³) 降到 O(n²)
+  const regRow = [];
+  for (let g = 0; g < n; g++) regRow.push(new Int32Array(n));
+  for (let r = 0; r < n; r++){
+    const base = r * n;
+    for (let c = 0; c < n; c++){
+      const g = region[base + c];
+      if (g >= 0 && g < n) regRow[g][r] |= (1 << c);
+    }
+  }
+
+  let colMask = 0;
+  function feasible(start){
+    const free = ~colMask;
+    for (let g = 0; g < n; g++){
+      if (usedReg[g]) continue;
+      const rg = regRow[g];
+      let ok = false;
+      for (let r = start; r < n; r++){
+        if (rg[r] & free){ ok = true; break; }
+      }
+      if (!ok) return false;
+    }
+    return true;
+  }
+
+  function rec(r){
+    if (out.length >= limit) return;
+    if (r === n){ out.push(Array.from(place)); return; }
+    for (let c = 0; c < n; c++){
+      if (usedCol[c]) continue;
+      if (r > 0 && Math.abs(c - place[r - 1]) < 2) continue;
+      const g = region[r * n + c];
+      if (usedReg[g]) continue;
+      usedCol[c] = 1; usedReg[g] = 1; place[r] = c;
+      colMask |= (1 << c);
+      if (feasible(r + 1)) rec(r + 1);
+      colMask &= ~(1 << c);
+      usedCol[c] = 0; usedReg[g] = 0;
+      if (out.length >= limit) return;
+    }
+  }
+
+  rec(0);
+  return out;
+}
+
+// 2.4 移除某格后色块是否仍连通
+function stillConnected(n, region, rid, removed){
+  let start = -1, cnt = 0;
+  for (let i = 0; i < n * n; i++)
+    if (region[i] === rid && i !== removed){ if (start < 0) start = i; cnt++; }
+  if (!cnt) return false;
+  const seen = new Uint8Array(n * n), q = [start];
+  seen[start] = 1;
+  let vis = 1;
+  while (q.length){
+    const i = q.pop(), r = (i / n) | 0, c = i % n;
+    if (r > 0 && !seen[i - n] && region[i - n] === rid && i - n !== removed){ seen[i - n] = 1; vis++; q.push(i - n); }
+    if (r < n - 1 && !seen[i + n] && region[i + n] === rid && i + n !== removed){ seen[i + n] = 1; vis++; q.push(i + n); }
+    if (c > 0 && !seen[i - 1] && region[i - 1] === rid && i - 1 !== removed){ seen[i - 1] = 1; vis++; q.push(i - 1); }
+    if (c < n - 1 && !seen[i + 1] && region[i + 1] === rid && i + 1 !== removed){ seen[i + 1] = 1; vis++; q.push(i + 1); }
+  }
+  return vis === cnt;
+}
+
+// 2.5 局部搜索把多解压成唯一解
+//     每一步在相邻色块之间搬动一个边界格，用前瞻评估挑“能让解数下降”的走法；
+//     解数不再下降就回退，长期停滞就重启。目标函数 = 解的数量（降到 1 即成功）。
+function makeUnique(n, seedSol, rng, maxIter, sampleN, deadline, now){
+  let region = growRegions(n, seedSol, rng);
+  if (!region) return { ok: false, iters: 0 };
+  const total = n * n;
+  const countSizes = () => {
+    const a = new Int16Array(n);
+    for (let i = 0; i < total; i++) a[region[i]]++;
+    return a;
+  };
+  let bestRegion = Int16Array.from(region), bestCnt = 99, stall = 0;
+
+  for (let it = 0; it < maxIter; it++){
+    if (deadline && now() > deadline) break;
+    const sols = collectSolutions(n, region, 3);
+    const cnt = sols.length;
+    if (cnt === 1) return { ok: true, region, sol: sols[0], iters: it };
+
+    if (cnt === 0 || cnt > bestCnt){
+      // 变差了：回退到已知最好状态
+      region = Int16Array.from(bestRegion);
+      if (++stall > 30){
+        const fresh = growRegions(n, seedSol, rng);
+        if (fresh){ region = fresh; bestCnt = 99; stall = 0; }
+      }
+      continue;
+    }
+    bestCnt = cnt; bestRegion = Int16Array.from(region); stall = 0;
+
+    // 所有“跨色块”的边界格移动
+    const sz = countSizes();
+    const cands = [];
+    for (let i = 0; i < total; i++){
+      const r = (i / n) | 0, c = i % n, R = region[i];
+      if (r > 0 && region[i - n] !== R) cands.push([i, R, region[i - n]]);
+      if (r < n - 1 && region[i + n] !== R) cands.push([i, R, region[i + n]]);
+      if (c > 0 && region[i - 1] !== R) cands.push([i, R, region[i - 1]]);
+      if (c < n - 1 && region[i + 1] !== R) cands.push([i, R, region[i + 1]]);
+    }
+    if (!cands.length) return { ok: false, iters: it };
+    for (let i = cands.length - 1; i > 0; i--){
+      const j = (rng() * (i + 1)) | 0;
+      const t = cands[i]; cands[i] = cands[j]; cands[j] = t;
+    }
+
+    // 前瞻：抽样评估若干走法，只接受“解数严格下降”的走法
+    let bestMove = null, bestC = cnt;
+    const k = Math.min(cands.length, sampleN);
+    for (let s = 0; s < k; s++){
+      const i = cands[s][0], R = cands[s][1], A = cands[s][2];
+      if (!stillConnected(n, region, R, i)) continue;
+      region[i] = A;
+      const c2 = collectSolutions(n, region, 3).length;
+      region[i] = R;
+      if (c2 > 0 && c2 < bestC){ bestC = c2; bestMove = [i, A]; }
+    }
+    if (bestMove){
+      region[bestMove[0]] = bestMove[1];
+    } else {
+      // 无严格改进：随机走一步跳出去（这里必须保持随机，任何系统性偏好都会让它原地打转）
+      for (let s = 0; s < Math.min(k, 6); s++){
+        const c = cands[s];
+        if (!stillConnected(n, region, c[1], c[0])) continue;
+        region[c[0]] = c[2];
+        break;
+      }
+    }
+  }
+  return { ok: false, iters: maxIter };
+}
+
+// 2.5b 均衡打磨：在保持“唯一解”的前提下把色块面积调匀
+function polishBalance(n, region, sol, rng, budgetMs, now){
+  const total = n * n;
+  const sizes = new Int16Array(n);
+  for (let i = 0; i < total; i++) sizes[region[i]]++;
+  const t0 = now();
+  let guard = 900, fails = 0;
+  while (guard-- > 0 && now() - t0 < budgetMs && fails < 60){
+    let maxG = 0;
+    for (let g = 1; g < n; g++) if (sizes[g] > sizes[maxG]) maxG = g;
+    let minG = 0;
+    for (let g = 1; g < n; g++) if (sizes[g] < sizes[minG]) minG = g;
+    if (sizes[maxG] - sizes[minG] <= 1) break;
+
+    const cands = [];
+    for (let i = 0; i < total; i++){
+      if (region[i] !== maxG) continue;
+      if (sol[(i / n) | 0] === i % n) continue;
+      const r = (i / n) | 0, c = i % n;
+      const opts = [];
+      if (r > 0 && region[i - n] !== maxG) opts.push(region[i - n]);
+      if (r < n - 1 && region[i + n] !== maxG) opts.push(region[i + n]);
+      if (c > 0 && region[i - 1] !== maxG) opts.push(region[i - 1]);
+      if (c < n - 1 && region[i + 1] !== maxG) opts.push(region[i + 1]);
+      for (const A of opts) if (sizes[A] < sizes[maxG] - 1) cands.push([i, A]);
+    }
+    if (!cands.length) break;
+
+    let accepted = false;
+    for (let t = 0; t < 14 && !accepted; t++){
+      const pick = cands[(rng() * cands.length) | 0];
+      const i = pick[0], A = pick[1];
+      if (!stillConnected(n, region, maxG, i)) continue;
+      region[i] = A;
+      if (collectSolutions(n, region, 2).length === 1){
+        sizes[maxG]--; sizes[A]++; accepted = true;
+      } else {
+        region[i] = maxG;
+      }
+    }
+    if (accepted) fails = 0; else fails++;
+  }
+  return region;
+}
+
+// 2.6 纯逻辑（唯一余数法）可解性检测：玩家不用猜就能推完
+function solvableByLogic(n, region){
+  const st = new Uint8Array(n * n);
+  const rowCow = new Int8Array(n).fill(-1);
+  const colCow = new Int8Array(n).fill(-1);
+  const regCow = new Int8Array(n).fill(-1);
+  const kill = i => { if (st[i] === 0) st[i] = 2; };
+  function place(r, c){
+    st[r * n + c] = 1;
+    rowCow[r] = c; colCow[c] = r; regCow[region[r * n + c]] = r;
+    for (let dr = -1; dr <= 1; dr++)
+      for (let dc = -1; dc <= 1; dc++){
+        const rr = r + dr, cc = c + dc;
+        if (rr >= 0 && rr < n && cc >= 0 && cc < n) kill(rr * n + cc);
+      }
+    for (let cc = 0; cc < n; cc++) kill(r * n + cc);
+    for (let rr = 0; rr < n; rr++) kill(rr * n + c);
+    for (let i = 0; i < n * n; i++) if (region[i] === region[r * n + c]) kill(i);
+  }
+  let progress = true;
+  while (progress){
+    progress = false;
+    for (let r = 0; r < n; r++){
+      if (rowCow[r] >= 0) continue;
+      let cnt = 0, pos = -1;
+      for (let c = 0; c < n; c++){
+        if (st[r * n + c] === 1){ cnt = -1; break; }
+        if (st[r * n + c] === 0){ cnt++; pos = c; }
+      }
+      if (cnt === 1){ place(r, pos); progress = true; }
+    }
+    for (let c = 0; c < n; c++){
+      if (colCow[c] >= 0) continue;
+      let cnt = 0, pos = -1;
+      for (let r = 0; r < n; r++) if (st[r * n + c] === 0){ cnt++; pos = r; }
+      if (cnt === 1){ place(pos, c); progress = true; }
+    }
+    for (let g = 0; g < n; g++){
+      if (regCow[g] >= 0) continue;
+      let cnt = 0, pos = -1;
+      for (let i = 0; i < n * n; i++) if (region[i] === g && st[i] === 0){ cnt++; pos = i; }
+      if (cnt === 1){ place((pos / n) | 0, pos % n); progress = true; }
+    }
+  }
+  let cows = 0;
+  for (let i = 0; i < n * n; i++) if (st[i] === 1) cows++;
+  return cows === n;
+}
+
+// 2.7 在时间预算内挑选最优关卡：优先“纯逻辑可解”，其次色块最均匀
+function buildLevel(n, seed, budgetMs){
+  const rng = mulberry32(seed);
+  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const budget = budgetMs || 300;
+  const deadline = now() + budget;
+  let best = null, bestScore = Infinity, bestPure = false, bestDev = Infinity, iter = 0;
+
+  // 12×12：唯一解在这个规模需要更努力地搜，但位运算优化后的求解器能稳定拿到。
+  // 循环换种子重试，直到拿到唯一解为止（保证“确保有唯一解”这一硬要求）。
+  if (n === 12){
+    for (let t = 0; t < 60; t++){
+      const seedSol = makeSolution(n, rng);
+      if (!seedSol) continue;
+      // 单轮限时 900ms：失败就换种子重来，比一轮死磕到 2200 次迭代更快命中
+      const r = makeUnique(n, seedSol, rng, 2200, 12, now() + 900, now);
+      if (r.ok && r.sol){
+        polishBalance(n, r.region, r.sol, rng, 120, now);
+        return { n, region: r.region, sol: Array.from(r.sol), pure: false };
+      }
+    }
+    // 理论上到不了这里（60 轮种子都失败的概率可忽略），
+    // 万一发生就降级到均衡生长兜底，绝不让关卡卡死。
+    const seedSol = makeSolution(n, mulberry32(seed ^ 0x51ed));
+    const region = growBalanced(n, seedSol, rng);
+    return { n, region, sol: Array.from(seedSol), pure: false };
+  }
+
+  do {
+    iter++;
+    // 每次尝试都很便宜（几毫秒），失败就换一个初始解重来
+    let cand = null;
+    const sampleN = n <= 8 ? 10 : 6;
+    const innerIter = n <= 9 ? 260 : 900;   // 10×10 起单轮多迭代几次，避免空转烧预算
+    for (let t = 0; t < 24 && !cand; t++){
+      const seedSol = makeSolution(n, rng);
+      if (!seedSol) continue;
+      const r = makeUnique(n, seedSol, rng, innerIter, sampleN, deadline, now);
+      if (r.ok && r.sol) cand = { region: r.region, sol: r.sol };
+      if (now() > deadline) break;
+    }
+    if (!cand) continue;
+
+    // 均衡打磨（吃掉剩余预算，最多 60ms）
+    polishBalance(n, cand.region, cand.sol, rng,
+      Math.max(6, Math.min(60, deadline - now())), now);
+
+    const sizes = new Array(n).fill(0);
+    let dev = 0;
+    for (let i = 0; i < n * n; i++) sizes[cand.region[i]]++;
+    for (let g = 0; g < n; g++) dev += Math.abs(sizes[g] - n);
+    const norm = dev / n;
+    const pure = solvableByLogic(n, cand.region);
+    const score = (pure ? 0 : 1000) + norm;
+    if (score < bestScore){
+      bestScore = score; best = cand; bestPure = pure; bestDev = norm;
+    }
+    if (bestPure && bestDev <= 1.6) break;
+  } while (now() < deadline && iter < 40);
+
+  if (!best){
+    // 兜底一：放宽时间再搏几次唯一解
+    const late = now() + 600;
+    for (let t = 0; t < 8 && !best; t++){
+      const s = makeSolution(n, rng);
+      if (!s) continue;
+      const r = makeUnique(n, s, rng, 400, 12, late, now);
+      if (r.ok && r.sol) best = { region: r.region, sol: r.sol };
+    }
+  }
+  if (!best){
+    // 兜底二：换独立随机源，务必拿到唯一解（多轮 makeUnique 重试）
+    const rng2 = mulberry32(seed ^ 0x9e3779b9);
+    for (let t = 0; t < 60 && !best; t++){
+      const s = makeSolution(n, rng2);
+      if (!s) continue;
+      const r = makeUnique(n, s, rng2, 2200, 12, now() + 1200, now);
+      if (r.ok && r.sol) best = { region: r.region, sol: r.sol };
+    }
+  }
+  if (!best){
+    // 兜底三（理论不可达）：仍无唯一解就退化为有解可玩，绝不让关卡卡死
+    const rng3 = mulberry32(seed ^ 0x51ed);
+    for (let t = 0; t < 20 && !best; t++){
+      const s = makeSolution(n, rng3);
+      if (!s) continue;
+      const reg = growRegions(n, s, rng3);
+      if (reg) best = { region: reg, sol: s };
+    }
+  }
+  return { n, region: best.region, sol: Array.from(best.sol), pure: !!bestPure };
+}
+
+/* =========================================================================
+   3. 色板
+   ========================================================================= */
+// 原版那种柔和的马卡龙色，同一格颜色 = 同一区域
+// 预置色系（每种 9 个颜色，对应最大 9×9）
+const BUILTIN_PALETTES = [
+  {
+    id: 'macaron', name: '马卡龙', desc: '柔和粉彩',
+    colors: ['#EBADAD', '#94BDE6', '#E0C285', '#AAE4D1', '#E18EC5', '#ADDA81',
+             '#BFAAE9', '#94E094', '#A5D9E4', '#D185E0', '#E7BF98', '#87D9A2']
+  },
+  {
+    id: 'morandi', name: '莫兰迪', desc: '低饱和灰调',
+    colors: ['#D2A7A7', '#8EABC7', '#CEBFA1', '#8BC1AF', '#D0A4C1', '#A3BF88',
+             '#AD9DCD', '#8EC28E', '#A1C7CE', '#BD90C6', '#D0BAA4', '#8BC19D']
+  },
+  {
+    id: 'candy', name: '糖果', desc: '明快高饱和',
+    colors: ['#F24444', '#4392E0', '#EBB13D', '#46DBAA', '#E640AE', '#8BD640',
+             '#7944E3', '#45D945', '#48C7E0', '#C33EDE', '#EB8842', '#45D675']
+  },
+  {
+    id: 'night', name: '夜幕', desc: '深底亮白叉',
+    colors: ['#854545', '#36506B', '#806B42', '#3A705E', '#82416C', '#536E39',
+             '#533E7D', '#3A703A', '#427580', '#693973', '#825E44', '#396E4B']
+  }
+];
+
+let PALETTE = BUILTIN_PALETTES[0].colors.slice();
+let PALETTE_HUE = [];
+let PALETTE_L = [];
+
+function hexToHsl(hex){
+  let h = String(hex || '').replace('#', '').trim();
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  if (h.length !== 6) return { h: 0, s: 0, l: 70 };
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let hh = 0;
+  if (d){
+    if (mx === r) hh = ((g - b) / d) % 6;
+    else if (mx === g) hh = (b - r) / d + 2;
+    else hh = (r - g) / d + 4;
+    hh *= 60;
+    if (hh < 0) hh += 360;
+  }
+  const l = (mx + mn) / 2;
+  const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  return { h: hh, s: sat * 100, l: l * 100 };
+}
+
+// 当前生效的色系
+function currentPaletteId(){ return save.palette || 'macaron'; }
+function currentPaletteColors(){
+  const id = currentPaletteId();
+  const custom = (save.customPalettes || []).filter(p => p.id === id)[0];
+  if (custom && custom.colors && custom.colors.length >= 12) return custom.colors;
+  const b = BUILTIN_PALETTES.filter(p => p.id === id)[0];
+  return (b || BUILTIN_PALETTES[0]).colors;
+}
+function applyPalette(colors){
+  const cols = (colors || []).slice();
+  while (cols.length < 12) cols.push(cols[cols.length - 1] || '#cccccc');
+  PALETTE = cols.slice(0, 12);
+  const hsl = PALETTE.map(hexToHsl);
+  PALETTE_HUE = hsl.map(v => v.h);
+  PALETTE_L = hsl.map(v => v.l);
+}
+applyPalette(BUILTIN_PALETTES[0].colors);
+
+// 颜色相近度：色相距离 + 明度差（1% 明度约等于 4° 色相），避免两片同色系糊在一起
+function colorDist(a, b){
+  let dh = Math.abs(PALETTE_HUE[a] - PALETTE_HUE[b]);
+  dh = Math.min(dh, 360 - dh);
+  const dl = Math.abs(PALETTE_L[a] - PALETTE_L[b]);
+  return dh + dl * 4;
+}
+
+// 邻接感知配色：相邻色块尽量用色相差距大的颜色，避免两片相近的粉糊在一起
+function assignPalette(n, region){
+  const adj = [];
+  for (let i = 0; i < n; i++) adj.push([]);
+  for (let r = 0; r < n; r++){
+    for (let c = 0; c < n; c++){
+      const g = region[r * n + c];
+      if (c < n - 1){
+        const h = region[r * n + c + 1];
+        if (h !== g){ adj[g].push(h); adj[h].push(g); }
+      }
+      if (r < n - 1){
+        const h = region[(r + 1) * n + c];
+        if (h !== g){ adj[g].push(h); adj[h].push(g); }
+      }
+    }
+  }
+  const order = [];
+  for (let i = 0; i < n; i++) order.push(i);
+  order.sort((a, b) => adj[b].length - adj[a].length);
+
+  const used = new Array(n).fill(-1);
+  const taken = new Set();
+  for (const g of order){
+    let best = -1, bestScore = -1;
+    for (let ci = 0; ci < PALETTE.length; ci++){
+      if (taken.has(ci)) continue;
+      let minD = 1e9;
+      for (const nb of adj[g]){
+        if (used[nb] < 0) continue;
+        const d = colorDist(ci, used[nb]);
+        if (d < minD) minD = d;
+      }
+      if (minD > bestScore){ bestScore = minD; best = ci; }
+    }
+    if (best < 0){
+      best = 0;
+      while (taken.has(best) && best < PALETTE.length - 1) best++;
+    }
+    used[g] = best;
+    taken.add(best);
+  }
+  return used;
+}
+
+/* =========================================================================
+   4. 音效
+   ========================================================================= */
+let audioCtx = null;
+function tone(freq, dur, type, vol, delay){
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t0 = audioCtx.currentTime + (delay || 0);
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol == null ? 0.07 : vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  } catch (e) { /* 忽略 */ }
+}
+/* ---------- 猫叫 ----------
+   首选系统中文语音读一声“喵”（音高拉高 = 小猫），最像真猫；
+   没有中文语音包时，退回一版柔和的波形合成，不再用之前的锯齿波。 */
+/* 真实猫叫（0.78s，单声道 44.1kHz，13.7KB mp3 → base64 内嵌）
+   来源：Wikimedia Commons "Meow.ogg"（社区授权素材，转 mp3 内嵌） */
+const MEOW_SRC = 'data:audio/mpeg;base64,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I0+epNKCi0bDWwrXrQ6SJFnS8EBJEAmHsXKYLCiJAFiQsiLSGNSUhjE0sAwQqBXJEhTWggDAwzEctkMyK4Trztlh40I2ndlLq8CpWLpYifYEaMGmgyoJ0A0LSxGKV4wdQVPwQIjTAuxKLx9E0zE5Ii1C8zCXyaszg3E8nErIQil0NBIyvE6zGTUfJNzWptIZbBPMQz0rF6DfiZrZKwqp7mN7B6SSq9ddVErCoEajaTR5ZZYuIiVVSbSqTz8U0S4VQMtr9pJMhxFGDZ17aKSbaUpgfkSBqCjpJpEkRCFZqDgGQcUNki2GBGQW05krJlUBKEmThcl2aJcXqdfML6ZCob85VDCsuTJi4esLymXz2z3/+5Bk4QD2DGjQeyxMWAAADSAAAAEXKaM3rTEvIAAANIAAAATatisPVuZttZ0vtxXvgnTZO1vh8hzk9cHJ6xXzCvEh6bojt47evWGCy5gWlbHa6Y4jF4z6DqI7t22sWLmK+xTdKxtW1mDFiwo0Le67y9gWjxW6W8V82zQZp9arnGa6vCpGYcPo1YrFI+lkt3zl8+uY2o0keDiLmLWF65gpMxERDszw8Oz7ZtsAAAAAGtQAqA8aEjCQJMbkomGYQLnzShTULIoCVGWEKpw6xVnSDKhVwiRE2AzHWdz7S7LaXUxTYVKijxX+HFXKZbUMKFGWsvL2hxG2Z8xT1pXOK6+f7Vzq2N1g5i7J/5UC/////srqTEFNRTMuMTAwqqqqqqqqqqqqqqqqqqpAAAVQESVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+4Bk4gAGE2jNbWXgCAAADSCgAAEOPKcn+ceAAAAANIMAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7EGTgj/AvAsOvDAAMAAANIOAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+
+let meowBuf = null, meowLoading = false;
+
+function loadMeow(){
+  if (meowBuf || meowLoading) return;
+  meowLoading = true;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const raw = atob(MEOW_SRC.split(',')[1]);
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    const p = audioCtx.decodeAudioData(bytes.buffer);
+    if (p && p.then){
+      p.then(ab => { meowBuf = ab; }).catch(() => { meowLoading = false; });
+    } else {
+      audioCtx.decodeAudioData(bytes.buffer, ab => { meowBuf = ab; }, () => { meowLoading = false; });
+    }
+  } catch (e) { meowLoading = false; }
+}
+
+// 播放真实猫叫；每次随机微调音高，避免连点时听起来像复读
+function playMeowSample(){
+  if (!meowBuf) return false;
+  try {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const src = audioCtx.createBufferSource();
+    src.buffer = meowBuf;
+    src.playbackRate.value = 0.94 + Math.random() * 0.14;
+    const g = audioCtx.createGain();
+    g.gain.value = 0.9;
+    src.connect(g);
+    g.connect(audioCtx.destination);
+    src.start();
+    return true;
+  } catch (e) { return false; }
+}
+
+let zhVoice = null, ttsTried = false;
+
+function pickZhVoice(){
+  if (!('speechSynthesis' in window)) return;
+  let vs = [];
+  try { vs = speechSynthesis.getVoices() || []; } catch (e) { return; }
+  if (!vs.length) return;
+  const zh = vs.filter(v => /^zh/i.test(v.lang || ''));
+  if (!zh.length){ zhVoice = null; ttsTried = true; return; }
+  // 优先选听着更“幼”的女声
+  const pref = ['Xiaoxiao', 'Yaoyao', 'Huihui', 'Xiaoyi', 'Tingting', 'Meijia', 'Female'];
+  const score = v => {
+    const n = (v.name || '');
+    let sc = /zh[-_]?CN/i.test(v.lang) ? 10 : 0;
+    for (let i = 0; i < pref.length; i++) if (n.indexOf(pref[i]) >= 0) sc += (pref.length - i);
+    return sc;
+  };
+  zh.sort((x, y) => score(y) - score(x));
+  zhVoice = zh[0];
+  ttsTried = true;
+  // 预热：先静默读一个空格，把语音引擎唤醒，正式触发时才不卡
+  try {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.voice = zhVoice;
+    u.volume = 0;
+    u.rate = 2;
+    speechSynthesis.speak(u);
+  } catch (e) { /* ignore */ }
+}
+
+if ('speechSynthesis' in window){
+  pickZhVoice();
+  try { speechSynthesis.addEventListener('voiceschanged', pickZhVoice); } catch (e) { /* ignore */ }
+}
+
+// 兜底：柔和的“喵呜”（三角波 + 低通 + 温和共振峰，两个音节）
+function synthMeow(){
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t0 = audioCtx.currentTime;
+
+    const syllable = (start, f0, f1, dur, vol) => {
+      const osc = audioCtx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(f0, start);
+      osc.frequency.exponentialRampToValueAtTime(f1, start + dur);
+
+      const lp = audioCtx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 2400;
+      lp.Q.value = 0.7;
+
+      const bp = audioCtx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 850;
+      bp.Q.value = 1.4;
+
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.linearRampToValueAtTime(vol, start + dur * 0.22);
+      g.gain.exponentialRampToValueAtTime(0.0005, start + dur);
+
+      osc.connect(lp); lp.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
+      osc.start(start); osc.stop(start + dur + 0.03);
+    };
+
+    syllable(t0, 555, 790, 0.085, 0.085);          // mi
+    syllable(t0 + 0.105, 770, 430, 0.185, 0.085);  // ao
+  } catch (e) { /* ignore */ }
+}
+
+// 叮咚：最早用的那个双音提示
+function playDing(){
+  tone(660, 0.1, 'sine', 0.075);
+  tone(990, 0.17, 'sine', 0.06, 0.085);
+}
+
+// 中文 TTS 读“喵”
+function ttsMeow(){
+  if (!ttsTried) pickZhVoice();
+  if (zhVoice){
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance('喵');
+      u.voice = zhVoice;
+      u.lang = zhVoice.lang || 'zh-CN';
+      u.pitch = 1.65;
+      u.rate = 1.12;
+      u.volume = 0.9;
+      speechSynthesis.speak(u);
+      return true;
+    } catch (e) { /* 落到合成音 */ }
+  }
+  synthMeow();
+  return false;
+}
+
+// 按玩家选的音效分派
+function meow(){
+  const kind = save.sfx || 'real';
+  if (kind === 'ding'){ playDing(); return; }
+  if (kind === 'synth'){ synthMeow(); return; }
+  if (kind === 'tts'){ ttsMeow(); return; }
+  // real：真实录音，没解码好就先顶上语音
+  if (playMeowSample()) return;
+  loadMeow();
+  ttsMeow();
+}
+
+// 试听（临时忽略静音开关，不改用户设置）
+function previewMeow(){
+  const wasMuted = state.muted;
+  state.muted = false;
+  try { playSfx('meow'); } finally { state.muted = wasMuted; }
+}
+
+function playSfx(name){
+  if (state.muted) return;
+  if (name === 'meow'){ meow(); return; }
+  if (name === 'place') tone(520, 0.12, 'triangle', 0.08);
+  else if (name === 'mark') tone(300, 0.06, 'sine', 0.045);
+  else if (name === 'tick') tone(320, 0.06, 'sine', 0.035);
+  else if (name === 'hint'){ tone(660, 0.1, 'sine', 0.06); tone(880, 0.12, 'sine', 0.05, 0.08); }
+  else if (name === 'error'){
+    tone(200, 0.16, 'sawtooth', 0.06);
+    tone(150, 0.2, 'sawtooth', 0.05, 0.05);
+  } else if (name === 'win'){
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, 0.24, 'triangle', 0.075, i * 0.1));
+  }
+}
+
+/* =========================================================================
+   5. 游戏状态
+   ========================================================================= */
+const SAVE_KEY = 'foxi-quxiaoxiao-v1';
+// 每关随机棋盘尺寸：上限随关卡缓慢放开，且不会和上一关重复
+function maxSizeForLevel(lv){
+  if (lv <= 1) return 5;
+  if (lv <= 3) return 6;
+  if (lv <= 5) return 7;
+  if (lv <= 8) return 8;
+  if (lv <= 11) return 9;
+  if (lv <= 14) return 10;
+  if (lv <= 17) return 11;
+  return 12;                     // 最大 12 行（保证唯一解的上限）
+}
+function nextRandomSize(lv, prev){
+  const maxN = maxSizeForLevel(lv);
+  const pool = [];
+  for (let k = 5; k <= maxN; k++) if (k !== prev) pool.push(k);
+  if (!pool.length) pool.push(maxN);
+  return pool[(Math.random() * pool.length) | 0];
+}
+
+const defaultSave = { level: 1, current: 1, stamp: 0, muted: false, autoMark: false, sfx: 'real', palette: 'macaron', customPalettes: [], dailyDate: '', best: {} };
+let save = Object.assign({}, defaultSave);
+try {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (raw) save = Object.assign(save, JSON.parse(raw));
+} catch (e) { /* ignore */ }
+function persist(){
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ }
+}
+
+/* ---------- 进度同步（部署在路由器上时生效，单文件打开会自动跳过） ---------- */
+const PROGRESS_URL = 'cgi-bin/progress';
+
+function pushProgress(){
+  try {
+    save.stamp = Date.now();
+    persist();
+    fetch(PROGRESS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        level: save.level || 1,
+        current: save.current || 1,
+        best: save.best || {},
+        stamp: save.stamp
+      })
+    }).catch(function(){});
+  } catch (e) { /* 离线时忽略 */ }
+}
+
+function pullProgress(){
+  return Promise.resolve()
+    .then(function(){
+      return fetch(PROGRESS_URL + '?_=' + Date.now(), { cache: 'no-store' });
+    })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(srv){
+      if (!srv || !srv.stamp) return;
+      if (srv.stamp <= (save.stamp || 0)) return;      // 本地更新，不覆盖
+      save.level = Math.max(save.level || 1, srv.level || 1);
+      save.current = Math.min(srv.current || srv.level || 1, save.level);
+      save.stamp = srv.stamp;
+      if (srv.best) save.best = Object.assign(save.best || {}, srv.best);
+      persist();
+    })
+    .catch(function(){});
+}
+
+const state = {
+  mode: 'main',          // main | daily
+  level: save.level || 1,
+  n: 5,
+  region: null,
+  sol: null,
+  marks: null,
+  lives: 3,
+  maxLives: 3,
+  hints: 3,
+  finds: 3,
+  startAt: 0,
+  elapsed: 0,
+  timer: null,
+  over: false,
+  cells: [],
+  busy: false,
+  muted: !!save.muted,
+  autoMark: save.autoMark === true,
+  palette: []
+};
+
+/* =========================================================================
+   6. DOM
+   ========================================================================= */
+const $ = s => document.querySelector(s);
+const boardEl = $('#board');
+const overlay = $('#overlay');
+const toastEl = $('#toast');
+const livesEl = $('#lives');
+const hintNEl = $('#hintN');
+const levelTitleEl = $('#levelTitle');
+const hudLeftEl = $('#hudLeft');
+const hudTimeEl = $('#hudTime');
+const rulebarEl = $('#rulebar');
+const rowLabelsEl = $('#rowLabels');
+const colLabelsEl = $('#colLabels');
+
+/* =========================================================================
+   7. 渲染
+   ========================================================================= */
+function buildBoardDom(){
+  applyPalette(currentPaletteColors());
+  const n = state.n;
+  const total = n * n;
+  const wrap = $('#boardWrap');
+  wrap.style.setProperty('--n', n);
+  wrap.style.setProperty('--gap', n <= 6 ? '3px' : n <= 8 ? '2.5px' : '2px');
+  boardEl.style.setProperty('--n', n);
+
+  const colorOf = assignPalette(n, state.region);
+  state.colorOf = colorOf;
+
+  const frag = document.createDocumentFragment();
+  const cells = new Array(total);
+  for (let r = 0; r < n; r++){
+    for (let c = 0; c < n; c++){
+      const i = r * n + c;
+      const el = document.createElement('div');
+      el.className = 'cell';
+      el.dataset.i = i;
+      el.style.setProperty('--c', PALETTE[colorOf[state.region[i]]]);
+      el.innerHTML = '<svg class="pet"><use href="#cat"/></svg><span class="xmark"></span>';
+      cells[i] = el;
+      frag.appendChild(el);
+    }
+  }
+  boardEl.innerHTML = '';
+  boardEl.appendChild(frag);
+  state.cells = cells;
+
+  let rl = '', cl = '';
+  for (let k = 1; k <= n; k++){
+    rl += '<span>' + k + '</span>';
+    cl += '<span>' + k + '</span>';
+  }
+  rowLabelsEl.innerHTML = rl;
+  colLabelsEl.innerHTML = cl;
+}
+
+function paint(i){
+  const el = state.cells[i];
+  if (!el) return;
+  const m = state.marks[i];
+  el.classList.toggle('is-cow', m === 1);
+  el.classList.toggle('is-x', m === 2 || m === 3);
+  el.classList.toggle('is-bad', m === 3);      // 3 = 试过、确定没猫，红叉锁死
+}
+function paintAll(){
+  for (let i = 0; i < state.marks.length; i++) paint(i);
+}
+
+function renderHud(){
+  levelTitleEl.innerHTML = state.mode === 'daily' ? '每日挑战' : '第 <b>' + state.level + '</b> 关';
+
+  let html = '';
+  for (let i = 0; i < state.maxLives; i++){
+    html += '<i class="' + (i < state.lives ? '' : 'off') + '">❤️</i>';
+  }
+  livesEl.innerHTML = html;
+
+  let cows = 0;
+  if (state.marks) for (let i = 0; i < state.marks.length; i++) if (state.marks[i] === 1) cows++;
+  hudLeftEl.textContent = Math.max(0, state.n - cows);
+
+  hintNEl.textContent = state.hints;
+  $('#btnFind').querySelector('.badge').textContent = state.finds;
+  $('#btnHint').disabled = state.hints <= 0;
+  $('#btnFind').disabled = state.finds <= 0;
+  $('#btnClear').disabled = !state.marks || !state.marks.some(v => v === 2);
+}
+
+function renderRulebar(){
+  rulebarEl.innerHTML =
+    '<div><span>每种颜色</span><b>仅 1 只</b></div>' +
+    '<div><span>每行每列</span><b>各 1 只</b></div>' +
+    '<div><span>小猫之间</span><b>不能相邻</b></div>';
+}
+
+function fmtTime(ms){
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  return String(m).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+
+function startTimer(){
+  stopTimer();
+  state.startAt = Date.now() - state.elapsed;
+  state.timer = setInterval(() => {
+    state.elapsed = Date.now() - state.startAt;
+    hudTimeEl.textContent = fmtTime(state.elapsed);
+  }, 200);
+  hudTimeEl.textContent = fmtTime(state.elapsed);
+}
+function stopTimer(){
+  if (state.timer){ clearInterval(state.timer); state.timer = null; }
+}
+
+let toastTimer = null;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1700);
+}
+
+/* =========================================================================
+   8. 关卡启动
+   ========================================================================= */
+function dailySeed(){
+  const d = new Date();
+  return (d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate()) ^ 0x5bf03635;
+}
+function todayKey(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function startLevel(opts){
+  if (state.busy) return;
+  state.busy = true;
+  hideModal();
+  stopTimer();
+
+  // 进入关卡就记下进度：level = 已解锁的最高关，current = 上次所在关
+  if (state.mode !== 'daily'){
+    save.current = state.level;
+    save.level = Math.max(save.level || 1, state.level);
+    pushProgress();
+  }
+
+  const isDaily = state.mode === 'daily';
+  const ds = isDaily ? dailySeed() : 0;
+  // 每日挑战：同一天全网同一个尺寸；闯关：每关随机，不与上一关重复
+  const n = isDaily ? (7 + ((ds >>> 5) % 3)) : nextRandomSize(state.level, state.n);
+  const seed = isDaily ? ds : ((Date.now() ^ (state.level * 2654435761)) >>> 0);
+
+  boardEl.classList.add('loading');
+  if (!state.cells.length){
+    boardEl.style.setProperty('--n', n);
+    boardEl.innerHTML = '';
+  }
+  toast(isDaily ? '正在生成今日挑战…' : `正在出题 · ${n}×${n}`);
+
+  setTimeout(() => {
+    const p = buildLevel(n, seed, n <= 7 ? 220 : n <= 9 ? 340 : n <= 11 ? 620 : 2000);
+    state.n = n;
+    state.region = p.region;
+    state.sol = p.sol;
+    state.marks = new Uint8Array(n * n);
+    state.lives = state.maxLives;
+    state.hints = 3; state.finds = 3;
+    state.elapsed = 0;
+    state.over = false;
+
+    buildBoardDom();
+    paintAll();
+    renderHud();
+    boardEl.classList.remove('loading');
+    startTimer();
+    state.busy = false;
+
+    if (state.mode === 'daily') toast(`每日挑战 · ${n}×${n}`);
+    else if (state.level <= 1) toast(`第 1 关 · ${n}×${n}｜单击打 ✕，双击放猫`);
+    else toast(`第 ${state.level} 关 · ${n}×${n}`);
+  }, 40);
+}
+
+function restartLevel(){
+  if (state.busy) return;
+  state.marks = new Uint8Array(state.n * state.n);
+  state.lives = state.maxLives;
+  state.hints = 3; state.finds = 3;
+  state.elapsed = 0;
+  state.over = false;
+  paintAll();
+  renderHud();
+  startTimer();
+  toast('本关已重开');
+}
+
+/* =========================================================================
+   9. 规则判定
+   ========================================================================= */
+// 放猫后把同行/同列/同色块/相邻的格子自动打 ✕（可选，默认关闭）
+function autoMarkAround(i){
+  const n = state.n, r = (i / n) | 0, c = i % n, g = state.region[i];
+  const put = j => { if (state.marks[j] === 0){ state.marks[j] = 2; paint(j); } };
+  for (let cc = 0; cc < n; cc++) put(r * n + cc);
+  for (let rr = 0; rr < n; rr++) put(rr * n + c);
+  for (let j = 0; j < n * n; j++) if (state.region[j] === g) put(j);
+  for (let dr = -1; dr <= 1; dr++)
+    for (let dc = -1; dc <= 1; dc++){
+      const rr = r + dr, cc = c + dc;
+      if (rr >= 0 && rr < n && cc >= 0 && cc < n) put(rr * n + cc);
+    }
+}
+
+// 检查是否有某一行/列/色块已经被彻底堵死（提示玩家回退，而不是傻等）
+function warnIfStuck(){
+  if (state.over) return;
+  const n = state.n;
+  const rowCow = new Uint8Array(n), colCow = new Uint8Array(n), regCow = new Uint8Array(n);
+  for (let i = 0; i < state.marks.length; i++){
+    if (state.marks[i] !== 1) continue;
+    const r = (i / n) | 0, c = i % n;
+    rowCow[r] = 1; colCow[c] = 1; regCow[state.region[i]] = 1;
+  }
+  const rowFree = new Int16Array(n), colFree = new Int16Array(n), regFree = new Int16Array(n);
+  for (let i = 0; i < state.marks.length; i++){
+    if (state.marks[i] !== 0) continue;            // 已有猫或被标了 ✕
+    const r = (i / n) | 0, c = i % n, g = state.region[i];
+    if (rowCow[r] || colCow[c] || regCow[g]) continue;
+    let adj = false;
+    for (let dr = -1; dr <= 1 && !adj; dr++)
+      for (let dc = -1; dc <= 1; dc++){
+        const rr = r + dr, cc = c + dc;
+        if (rr < 0 || rr >= n || cc < 0 || cc >= n) continue;
+        if (state.marks[rr * n + cc] === 1){ adj = true; break; }
+      }
+    if (adj) continue;
+    rowFree[r]++; colFree[c]++; regFree[g]++;
+  }
+  for (let r = 0; r < n; r++) if (!rowCow[r] && rowFree[r] === 0) return toast('⚠️ 第 ' + (r + 1) + ' 行已经无处放猫，擦掉一些 ✕ 再试');
+  for (let c = 0; c < n; c++) if (!colCow[c] && colFree[c] === 0) return toast('⚠️ 第 ' + (c + 1) + ' 列已经无处放猫，擦掉一些 ✕ 再试');
+  for (let g = 0; g < n; g++) if (!regCow[g] && regFree[g] === 0) return toast('⚠️ 有一个色块已经无处放猫，擦掉一些 ✕ 再试');
+}
+
+/* =========================================================================
+   10. 交互
+   ========================================================================= */
+
+function placeCow(i){
+  if (state.over || state.busy) return;
+  const n = state.n, r = (i / n) | 0, c = i % n;
+
+  // 已确认的猫 / 已判定错误的位置：都不再响应
+  if (state.marks[i] === 1 || state.marks[i] === 3) return;
+
+  // 和标准答案比对：位置不对直接扣命，并把这一格标成红叉永久锁死
+  if (state.sol[r] !== c){
+    state.marks[i] = 3;
+    paint(i);
+    loseLife(i, '这里没有小猫');
+    return;
+  }
+
+  state.marks[i] = 1;
+  paint(i);
+  if (state.autoMark) autoMarkAround(i);
+  renderHud();
+  playSfx('meow');
+  checkWin();
+}
+
+// 单击：在格子上切换 ✕（点已放好的猫则收回）
+function toggleMark(i){
+  if (state.over || state.busy) return;
+  if (state.marks[i] === 1 || state.marks[i] === 3) return;   // 猫 / 红叉都不可改
+  state.marks[i] = state.marks[i] === 2 ? 0 : 2;
+  paint(i);
+  renderHud();
+  playSfx('mark');
+}
+
+// 拖动笔刷：按下的第一格决定这一笔在做什么
+//   从空格开始 → 连续画 ✕；从 ✕ 上开始 → 连续擦除
+// 每格在一次拖动里只处理一次，避免指针事件密集时反复闪烁
+function brushAt(i){
+  if (i < 0 || i >= state.marks.length) return;
+  if (state.marks[i] === 1 || state.marks[i] === 3) return;   // 猫和红叉都不动
+  if (ptr.touched){ if (ptr.touched.has(i)) return; ptr.touched.add(i); }
+  if (ptr.dragMode === 2){
+    if (state.marks[i] === 0){ state.marks[i] = 2; paint(i); }
+  } else {
+    if (state.marks[i] === 2){ state.marks[i] = 0; paint(i); }
+  }
+}
+
+// 快速拖动时指针事件可能跳跃，用直线补齐中间的格子
+function markLine(a, b){
+  const n = state.n;
+  const ar = (a / n) | 0, ac = a % n, br = (b / n) | 0, bc = b % n;
+  const steps = Math.max(Math.abs(br - ar), Math.abs(bc - ac));
+  if (steps === 0){ brushAt(b); return; }
+  for (let t = 0; t <= steps; t++){
+    const r = Math.round(ar + (br - ar) * t / steps);
+    const c = Math.round(ac + (bc - ac) * t / steps);
+    brushAt(r * n + c);
+  }
+}
+
+function clearMarks(){
+  if (state.over || state.busy || !state.marks) return;
+  let any = false;
+  for (let i = 0; i < state.marks.length; i++) if (state.marks[i] === 2){ any = true; break; }
+  if (!any){ toast('已经没有可清除的 ✕ 了'); return; }
+  for (let i = 0; i < state.marks.length; i++){
+    if (state.marks[i] === 2){ state.marks[i] = 0; paint(i); }
+  }
+  renderHud();
+  playSfx('tick');
+  toast('已清除 ✕ 标记（红色 ✕ 保留）');
+}
+
+function loseLife(i, why){
+  state.lives--;
+  const el = state.cells[i];
+  if (el){
+    el.classList.add('err');
+    setTimeout(() => el.classList.remove('err'), 420);
+  }
+  playSfx('error');
+  if (navigator.vibrate) { try { navigator.vibrate(60); } catch (e) {} }
+  toast('❌ ' + why + '　-1 ❤️');
+  renderHud();
+  if (state.lives <= 0) gameOver();
+}
+
+
+/* ---- 推理引擎：给“提示”找一条玩家能看懂的结论 ---- */
+
+// ① 直接排除：这一格为什么不可能有猫（依赖已放的猫，结论 100% 可靠）
+function findEliminable(){
+  const n = state.n, out = [];
+  const cows = [];
+  for (let i = 0; i < n * n; i++) if (state.marks[i] === 1) cows.push(i);
+  if (!cows.length) return out;
+
+  for (let i = 0; i < n * n; i++){
+    if (state.marks[i] !== 0) continue;
+    const r = (i / n) | 0, c = i % n, g = state.region[i];
+    let reason = null, kind = 9;
+    for (const j of cows){
+      const rr = (j / n) | 0, cc = j % n;
+      if (Math.abs(rr - r) <= 1 && Math.abs(cc - c) <= 1){
+        reason = '它和第 <b>' + (rr + 1) + '</b> 行的小猫贴在一起（含斜对角），两只猫不能相邻。';
+        kind = 0; break;
+      }
+      if (state.region[j] === g){
+        reason = '这个色块里已经有猫了，<b>每个色块只能藏 1 只</b>。';
+        kind = 1; break;
+      }
+      if (cc === c){
+        reason = '第 <b>' + (c + 1) + '</b> 列已经有猫了，<b>每列只能有 1 只</b>。';
+        kind = 2; break;
+      }
+      if (rr === r){
+        reason = '第 <b>' + (r + 1) + '</b> 行已经有猫了，<b>每行只能有 1 只</b>。';
+        kind = 3; break;
+      }
+    }
+    if (reason) out.push({ i, reason, kind });
+  }
+  // 越难自己发现的越优先讲：相邻 > 色块 > 列 > 行
+  out.sort((a, b) => a.kind - b.kind);
+  return out;
+}
+
+// ② 唯一余数：某行/列/色块只剩一个可放位置
+function findNakedSingle(){
+  const n = state.n;
+  const rowCow = new Uint8Array(n), colCow = new Uint8Array(n), regCow = new Uint8Array(n);
+  for (let i = 0; i < n * n; i++){
+    if (state.marks[i] !== 1) continue;
+    const r = (i / n) | 0, c = i % n;
+    rowCow[r] = 1; colCow[c] = 1; regCow[state.region[i]] = 1;
+  }
+  const rowC = [], colC = [], regC = [];
+  for (let k = 0; k < n; k++){ rowC.push([]); colC.push([]); regC.push([]); }
+
+  for (let i = 0; i < n * n; i++){
+    if (state.marks[i] !== 0) continue;
+    const r = (i / n) | 0, c = i % n, g = state.region[i];
+    if (rowCow[r] || colCow[c] || regCow[g]) continue;
+    let adj = false;
+    for (let dr = -1; dr <= 1 && !adj; dr++)
+      for (let dc = -1; dc <= 1; dc++){
+        const rr = r + dr, cc = c + dc;
+        if (rr < 0 || rr >= n || cc < 0 || cc >= n) continue;
+        if (state.marks[rr * n + cc] === 1){ adj = true; break; }
+      }
+    if (adj) continue;
+    rowC[r].push(i); colC[c].push(i); regC[g].push(i);
+  }
+  for (let r = 0; r < n; r++) if (!rowCow[r] && rowC[r].length === 1)
+    return { i: rowC[r][0], type: 'row', idx: r };
+  for (let c = 0; c < n; c++) if (!colCow[c] && colC[c].length === 1)
+    return { i: colC[c][0], type: 'col', idx: c };
+  for (let g = 0; g < n; g++) if (!regCow[g] && regC[g].length === 1)
+    return { i: regC[g][0], type: 'reg', idx: g };
+  return null;
+}
+
+// 把“同一行/列/色块里其余格子为什么都不能放猫”讲清楚
+function explainWhyOthers(single){
+  const n = state.n, keep = single.i;
+  const cows = [];
+  for (let i = 0; i < n * n; i++) if (state.marks[i] === 1) cows.push(i);
+
+  const cells = [];
+  if (single.type === 'row'){
+    for (let c = 0; c < n; c++) cells.push(single.idx * n + c);
+  } else if (single.type === 'col'){
+    for (let r = 0; r < n; r++) cells.push(r * n + single.idx);
+  } else {
+    for (let i = 0; i < n * n; i++) if (state.region[i] === single.idx) cells.push(i);
+  }
+
+  const cnt = { adj: 0, reg: 0, col: 0, row: 0, marked: 0, bad: 0, other: 0 };
+  for (const i of cells){
+    if (i === keep) continue;
+    if (state.marks[i] === 1) continue;
+    const r = (i / n) | 0, c = i % n, g = state.region[i];
+    let hit = null;
+    for (const j of cows){
+      const rr = (j / n) | 0, cc = j % n;
+      if (Math.abs(rr - r) <= 1 && Math.abs(cc - c) <= 1){ hit = 'adj'; break; }
+      if (state.region[j] === g){ hit = 'reg'; break; }
+      if (cc === c){ hit = 'col'; break; }
+      if (rr === r){ hit = 'row'; break; }
+    }
+    if (!hit && state.marks[i] === 3) hit = 'bad';
+    if (!hit && state.marks[i] === 2) hit = 'marked';
+    cnt[hit || 'other']++;
+  }
+
+  const parts = [];
+  if (cnt.adj) parts.push(cnt.adj + ' 格和已有的猫相邻');
+  if (cnt.reg) parts.push(cnt.reg + ' 格所在的色块已经有猫');
+  if (cnt.col) parts.push(cnt.col + ' 格同列已经有猫');
+  if (cnt.row) parts.push(cnt.row + ' 格同行已经有猫');
+  if (cnt.bad) parts.push(cnt.bad + ' 格试过是错的');
+  if (cnt.marked) parts.push(cnt.marked + ' 格被你标了 ✕');
+  if (cnt.other) parts.push(cnt.other + ' 格也放不下');
+
+  const where = single.type === 'row' ? '第 <b>' + (single.idx + 1) + '</b> 行'
+              : single.type === 'col' ? '第 <b>' + (single.idx + 1) + '</b> 列'
+              : '这个色块';
+  if (!parts.length) return where + '只剩这一个位置能放猫，所以它<b>必定是猫</b>。';
+  return where + '只剩这一个位置能放猫 —— 其余格子都不可能：' + parts.join('、') + '。所以这里<b>必定是猫</b>。';
+}
+
+let explainTimer = null;
+function explain(html, warn){
+  const el = $('#explain');
+  el.innerHTML = html;
+  el.classList.toggle('show', true);
+  el.style.borderLeftColor = warn ? '#f97316' : '';
+  clearTimeout(explainTimer);
+  explainTimer = setTimeout(() => el.classList.remove('show'), warn ? 4200 : 5200);
+}
+
+function flashCell(i){
+  const el = state.cells[i];
+  if (!el) return;
+  el.classList.add('hint');
+  setTimeout(() => el.classList.remove('hint'), 2100);
+}
+
+/* ---- 找猫：直接告诉你一只猫在哪 ---- */
+function findCow(){
+  if (state.over || state.busy) return;
+  if (state.finds <= 0){ toast('找猫次数已用完'); return; }
+  const n = state.n, sol = state.sol;
+  const rows = [];
+  for (let r = 0; r < n; r++){
+    if (state.marks[r * n + sol[r]] !== 1) rows.push(r);
+  }
+  if (!rows.length){ toast('猫已经都找到了'); return; }
+
+  const r = rows[(Math.random() * rows.length) | 0];
+  const i = r * n + sol[r];
+  state.marks[i] = 1;
+  paint(i);
+  if (state.autoMark) autoMarkAround(i);
+  state.finds--;
+  renderHud();
+  playSfx('meow');
+  flashCell(i);
+  explain('<span class="tag">找猫</span>第 <b>' + (r + 1) + '</b> 行的小猫在这里，已经帮你放好了。');
+  checkWin();
+  warnIfStuck();
+}
+
+/* ---- 提示：找出一个“不可能有猫”的格子，并说明理由 ---- */
+function giveHint(){
+  if (state.over || state.busy) return;
+  if (state.hints <= 0){ toast('提示次数已用完'); return; }
+  const n = state.n;
+
+  // ① 优先讲“为什么这格不可能有猫”
+  const cands = findEliminable();
+  if (cands.length){
+    const pick = cands[0];
+    state.marks[pick.i] = 2;
+    paint(pick.i);
+    state.hints--;
+    renderHud();
+    playSfx('hint');
+    flashCell(pick.i);
+    explain('<span class="tag">排除</span>这一格不可能有猫：' + pick.reason);
+    return;
+  }
+
+  // ② 没有可直接排除的，就找“只剩一个位置”的行列/色块
+  const single = findNakedSingle();
+  if (single){
+    const r = (single.i / n) | 0, c = single.i % n;
+    if (state.sol[r] !== c){
+      // 算出来和答案不符 → 说明玩家自己的 ✕ 标错了
+      explain('<span class="tag warn">注意</span>你的 ✕ 标记里有不成立的，才把这里逼到只剩一个位置。先擦掉几个 ✕ 再试试。', true);
+      return;
+    }
+    const text = explainWhyOthers(single);
+    state.marks[single.i] = 1;
+    paint(single.i);
+    if (state.autoMark) autoMarkAround(single.i);
+    state.hints--;
+    renderHud();
+    playSfx('hint');
+    flashCell(single.i);
+    explain('<span class="tag">必然</span>' + text);
+    checkWin();
+    warnIfStuck();
+    return;
+  }
+
+  // ③ 需要反向假设才能推进：直接给一只猫
+  const rows = [];
+  for (let r2 = 0; r2 < n; r2++) if (state.marks[r2 * n + state.sol[r2]] !== 1) rows.push(r2);
+  if (!rows.length){ toast('已经完成啦'); return; }
+  const r3 = rows[(Math.random() * rows.length) | 0];
+  const i3 = r3 * n + state.sol[r3];
+  state.marks[i3] = 1;
+  paint(i3);
+  if (state.autoMark) autoMarkAround(i3);
+  state.hints--;
+  renderHud();
+  playSfx('hint');
+  flashCell(i3);
+  explain('<span class="tag">必然</span>这一关要反过来假设才能推进：假设别的格子放猫会撞车，所以第 <b>' + (r3 + 1) + '</b> 行只能在这里。');
+  checkWin();
+  warnIfStuck();
+}
+
+function checkWin(){
+  let cows = 0;
+  for (let i = 0; i < state.marks.length; i++) if (state.marks[i] === 1) cows++;
+  if (cows !== state.n) return;
+  state.over = true;
+  stopTimer();
+  playSfx('win');
+  if (navigator.vibrate) { try { navigator.vibrate([20, 40, 20]); } catch (e) {} }
+
+  const t = fmtTime(state.elapsed);
+  if (state.mode === 'daily'){
+    save.dailyDate = todayKey();
+    persist();
+    showModal({
+      emoji: '🏆',
+      title: '今日挑战完成',
+      sub: '明天再来挑战新的一题吧',
+      stats: [[t, '用时'], [state.n + '×' + state.n, '尺寸'], ['3', '剩余提示']],
+      actions: [
+        { label: '回到主线', primary: true, fn: () => { state.mode = 'main'; state.level = Math.min(save.current || save.level || 1, save.level || 1); startLevel(); } }
+      ]
+    });
+    return;
+  }
+
+  const lv = state.level;
+  const key = 'lv' + lv;
+  const prevBest = save.best[key];
+  if (!prevBest || state.elapsed < prevBest) save.best[key] = state.elapsed;
+  // 通关即自动保存：解锁下一关，并记为“上次所在关卡”
+  save.level = Math.max(save.level || 1, lv + 1);
+  save.current = lv + 1;
+  pushProgress();
+
+  showModal({
+    emoji: '🎉',
+    title: '通关！',
+    sub: '下一关会换一个随机大小的棋盘',
+    stats: [[t, '本关用时'], [String(state.lives), '剩余生命'], [state.n + '×' + state.n, '棋盘']],
+    actions: [
+      { label: '下一关', primary: true, fn: () => { state.level = lv + 1; startLevel(); } },
+      { label: '重玩本关', soft: true, fn: () => { restartLevel(); } }
+    ]
+  });
+}
+
+function gameOver(){
+  state.over = true;
+  stopTimer();
+  showModal({
+    emoji: '😵',
+    title: '生命耗尽',
+    sub: '别急，佛系一点，慢慢推就好',
+    stats: [[String(state.lives), '剩余生命'], [fmtTime(state.elapsed), '坚持时间']],
+    actions: [
+      { label: '重新挑战', primary: true, fn: () => restartLevel() },
+      { label: '看提示技巧', soft: true, fn: () => showHelp(true) }
+    ]
+  });
+}
+
+/* =========================================================================
+   11. 弹层
+   ========================================================================= */
+function showModal(cfg){
+  const stats = (cfg.stats || []).map(([v, k]) =>
+    `<div><b>${v}</b><span>${k}</span></div>`).join('');
+  const actions = (cfg.actions || []).map((a, idx) =>
+    `<button class="btn ${a.primary ? 'primary' : 'soft'}" data-idx="${idx}">${a.label}</button>`).join('');
+  overlay.innerHTML = `<div class="modal">
+    ${cfg.emoji ? `<div class="emoji">${cfg.emoji}</div>` : ''}
+    <h2>${cfg.title}</h2>
+    ${cfg.sub ? `<p class="sub">${cfg.sub}</p>` : ''}
+    ${stats ? `<div class="statrow">${stats}</div>` : ''}
+    ${cfg.html || ''}
+    ${actions}
+  </div>`;
+  overlay.classList.add('show');
+  (cfg.actions || []).forEach((a, idx) => {
+    const btn = overlay.querySelector(`[data-idx="${idx}"]`);
+    if (btn) btn.onclick = () => { hideModal(); a.fn && a.fn(); };
+  });
+}
+function hideModal(){
+  overlay.classList.remove('show');
+  overlay.innerHTML = '';
+}
+
+function rebuildBoard(){
+  if (!state.region) return;
+  buildBoardDom();
+  paintAll();
+  renderHud();
+}
+
+function paletteCardsHtml(){
+  const cur = currentPaletteId();
+  const all = BUILTIN_PALETTES.concat((save.customPalettes || []).map(p => ({
+    id: p.id, name: p.name, desc: '自定义', colors: p.colors, custom: true
+  })));
+  return all.map(p => {
+    const dots = p.colors.slice(0, 9).map(c => '<i style="background:' + c + '"></i>').join('');
+    return '<button class="palcard' + (p.id === cur ? ' on' : '') + '" data-pal="' + p.id + '">' +
+      '<span class="paldots">' + dots + '</span>' +
+      '<span class="palinfo"><b>' + p.name + '</b><i>' + (p.desc || '') + '</i></span>' +
+      '<span class="palcheck">✓</span>' +
+      (p.custom ? '<button class="paldel" data-del="' + p.id + '" title="删除">×</button>' : '') +
+    '</button>';
+  }).join('');
+}
+
+function showPaletteMenu(){
+  showModal({
+    emoji: '🎨',
+    title: '棋盘配色',
+    sub: '同一套颜色的先后顺序会自动避开相邻色块',
+    html: '<div class="pallist">' + paletteCardsHtml() + '</div>' +
+          '<button class="palnew" id="palNew">＋ 新建配色</button>',
+    actions: [{ label: '完成', primary: true, fn: () => {} }]
+  });
+
+  overlay.querySelectorAll('.palcard').forEach(card => {
+    card.onclick = e => {
+      if (e.target.classList.contains('paldel')) return;
+      save.palette = card.dataset.pal;
+      persist();
+      applyPalette(currentPaletteColors());
+      rebuildBoard();
+      showPaletteMenu();          // 重开以刷新选中态
+    };
+  });
+
+  overlay.querySelectorAll('.paldel').forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      const id = btn.dataset.del;
+      save.customPalettes = (save.customPalettes || []).filter(p => p.id !== id);
+      if (save.palette === id) save.palette = 'macaron';
+      persist();
+      applyPalette(currentPaletteColors());
+      rebuildBoard();
+      showPaletteMenu();
+    };
+  });
+
+  const nb = overlay.querySelector('#palNew');
+  if (nb) nb.onclick = () => showPaletteEditor();
+}
+
+function showPaletteEditor(){
+  const base = currentPaletteColors().slice();
+  const draft = base.slice();
+  let name = '';
+  const cells = draft.map((c, i) =>
+    '<label><input type="color" data-i="' + i + '" value="' + c + '"></label>').join('');
+
+  showModal({
+    emoji: '🎨',
+    title: '新建配色',
+    sub: '点方块换颜色，12 个一组',
+    html: '<div class="paledit">' + cells + '</div>' +
+          '<input class="palname-in" id="palName" maxlength="10" placeholder="给这套配色起个名字">',
+    actions: [
+      { label: '保存并使用', primary: true, fn: () => {
+          const id = 'c' + Date.now();
+          const list = (save.customPalettes || []).slice();
+          list.push({ id, name: (name.trim() || '我的配色'), colors: draft.slice() });
+          save.customPalettes = list.slice(-8);          // 最多留 8 套
+          save.palette = id;
+          persist();
+          applyPalette(draft.slice());
+          rebuildBoard();
+          toast('已保存并切换配色');
+        } },
+      { label: '取消', soft: true, fn: () => {} }
+    ]
+  });
+
+  overlay.querySelectorAll('.paledit input').forEach(inp => {
+    inp.oninput = e => { draft[+e.target.dataset.i] = e.target.value; };
+  });
+  const nm = overlay.querySelector('#palName');
+  if (nm) nm.oninput = e => { name = e.target.value; };
+}
+
+function showSfxMenu(){
+  const cur = save.sfx || 'real';
+  const items = [
+    ['real',  '🐱', '真实猫叫', '录音采样，最像真猫'],
+    ['tts',   '🗣', '语音喵',   '系统中文语音读「喵」'],
+    ['synth', '🎵', '电子喵',   '波形合成，短促双音节'],
+    ['ding',  '🔔', '叮咚',     '最开始的清亮双音提示']
+  ];
+  const rows = items.map(it =>
+    '<button class="sfxrow' + (it[0] === cur ? ' on' : '') + '" data-sfx="' + it[0] + '">' +
+      '<span class="sfxico">' + it[1] + '</span>' +
+      '<span class="sfxtxt"><b>' + it[2] + '</b><i>' + it[3] + '</i></span>' +
+      '<span class="sfxchk">✓</span>' +
+    '</button>').join('');
+
+  showModal({
+    emoji: '🔊',
+    title: '音效',
+    sub: '放对一只猫时播放的声音',
+    html: '<div class="sfxtop"><span>开启音效</span>' +
+            '<label class="switch"><input type="checkbox" id="sfxOn"' + (state.muted ? '' : ' checked') + '>' +
+            '<span class="track"></span></label></div>' +
+          '<div class="sfxlist">' + rows + '</div>',
+    actions: [{ label: '完成', primary: true, fn: () => {} }]
+  });
+
+  const on = overlay.querySelector('#sfxOn');
+  if (on){
+    on.onchange = e => {
+      state.muted = !e.target.checked;
+      save.muted = state.muted;
+      persist();
+      syncSoundBtn();
+      if (!state.muted) previewMeow();
+    };
+  }
+
+  overlay.querySelectorAll('.sfxrow').forEach(btn => {
+    btn.onclick = () => {
+      save.sfx = btn.dataset.sfx;
+      persist();
+      overlay.querySelectorAll('.sfxrow').forEach(b => b.classList.toggle('on', b === btn));
+      previewMeow();
+    };
+  });
+}
+
+function showLevels(){
+  const unlocked = Math.max(1, save.level || 1);
+  const cur = state.mode === 'daily' ? -1 : state.level;
+  const total = Math.min(unlocked + 3, 60);
+
+  let cells = '';
+  for (let i = 1; i <= total; i++){
+    const locked = i > unlocked;
+    const done = i < unlocked;
+    const cls = 'lvbtn' + (locked ? ' locked' : '') + (done ? ' done' : '') + (i === cur ? ' cur' : '');
+    cells += '<button class="' + cls + '" data-lv="' + i + '"' + (locked ? ' disabled' : '') + '>' + i + '</button>';
+  }
+
+  showModal({
+    emoji: '🗺️',
+    title: '选择关卡',
+    sub: '已解锁 ' + unlocked + ' 关 · 每关棋盘随机',
+    html: '<div class="levelgrid">' + cells + '</div>',
+    actions: [
+      { label: cur > 0 ? '继续第 ' + cur + ' 关' : '回到主线', primary: true, fn: () => {
+          if (state.mode === 'daily'){ state.mode = 'main'; state.level = save.current || save.level || 1; startLevel(); }
+        } }
+    ]
+  });
+
+  overlay.querySelectorAll('.lvbtn[data-lv]').forEach(btn => {
+    btn.onclick = () => {
+      const lv = +btn.dataset.lv;
+      if (btn.disabled) return;
+      if (lv === cur && state.mode !== 'daily'){ hideModal(); return; }
+      hideModal();
+      state.mode = 'main';
+      state.level = lv;
+      save.current = lv;
+      persist();
+      startLevel();
+    };
+  });
+}
+
+function showHelp(fromLose){
+  showModal({
+    emoji: '🐱',
+    title: '玩法说明',
+    sub: '在棋盘上找出所有小猫的位置',
+    html: `<ul class="rules2">
+      <li><b>①</b><span>每行、每列有且只有 <b>1</b> 只小猫</span></li>
+      <li><b>②</b><span>每个同色色块里只有 <b>1</b> 只小猫</span></li>
+      <li><b>③</b><span>两只猫不能相邻，包括 <b>斜对角</b></span></li>
+      <li><b>④</b><span><b>单击</b>打 ✕；按住<b>拖动</b>可连续标记</span></li>
+      <li><b>⑤</b><span>从 <b>✕</b> 上开始拖动 = 连续擦除</span></li>
+      <li><b>⑥</b><span><b>双击</b>格子放一只猫（长按 / 右键也行）</span></li>
+      <li><b>⑦</b><span>放错位置会扣 <b>1</b> 点生命，共 3 点</span></li>
+      <li><b>⑧</b><span><b>🐱 找猫</b>直接给你一只；<b>💡 提示</b>帮你找出「不可能有猫」的格子并讲原因</span></li>
+    </ul>
+    <p class="sub" style="margin-bottom:14px">小技巧：先盯<b>面积最小的色块</b>，再看只剩一个空位的行列。</p>`,
+    actions: [
+      { label: fromLose ? '重新挑战' : '开始推理', primary: true, fn: () => { if (fromLose) restartLevel(); } }
+    ]
+  });
+}
+
+/* =========================================================================
+   12. 事件绑定
+   ========================================================================= */
+// 单击 / 拖动 = 打 ✕ ；双击 / 长按 / 右键 = 放猫
+const ptr = { idx: -1, x0: 0, y0: 0, dragging: false, longFired: false, timer: null, lastIdx: -1, dragMode: 2, touched: null };
+let lastTap = { idx: -1, t: 0 };
+const TAP_GAP = 260;      // 双击判定窗口
+const LONG_MS = 420;      // 长按放猫
+const DRAG_PX = 7;        // 拖动死区
+
+function cellFromPoint(x, y){
+  const el = document.elementFromPoint(x, y);
+  return el && el.closest ? el.closest('.cell') : null;
+}
+
+boardEl.addEventListener('pointerdown', e => {
+  if (state.over || state.busy || e.button === 2) return;
+  const cell = e.target.closest ? e.target.closest('.cell') : null;
+  if (!cell) return;
+  ptr.idx = +cell.dataset.i;
+  ptr.x0 = e.clientX; ptr.y0 = e.clientY;
+  ptr.dragging = false; ptr.longFired = false;
+  clearTimeout(ptr.timer);
+  ptr.timer = setTimeout(() => {
+    if (ptr.idx < 0 || ptr.dragging) return;
+    ptr.longFired = true;
+    placeCow(ptr.idx);
+  }, LONG_MS);
+});
+
+window.addEventListener('pointermove', e => {
+  if (ptr.idx < 0) return;
+  const dx = e.clientX - ptr.x0, dy = e.clientY - ptr.y0;
+  if (!ptr.dragging){
+    if (dx * dx + dy * dy < DRAG_PX * DRAG_PX) return;
+    if (state.over || state.busy) return;
+    ptr.dragging = true;
+    clearTimeout(ptr.timer);
+    // 按下那一格决定这一笔是“画叉”还是“擦叉”
+    ptr.dragMode = state.marks[ptr.idx] === 2 ? 0 : 2;
+    ptr.touched = new Set();
+    brushAt(ptr.idx);
+    ptr.lastIdx = ptr.idx;
+  }
+  const cell = cellFromPoint(e.clientX, e.clientY);
+  if (cell){
+    const to = +cell.dataset.i;
+    markLine(ptr.lastIdx >= 0 ? ptr.lastIdx : ptr.idx, to);
+    ptr.lastIdx = to;
+  }
+  if (e.cancelable) e.preventDefault();
+}, { passive: false });
+
+
+window.addEventListener('pointerup', () => {
+  clearTimeout(ptr.timer);
+  const idx = ptr.idx;
+  const wasDrag = ptr.dragging, wasLong = ptr.longFired;
+  ptr.idx = -1; ptr.dragging = false; ptr.longFired = false; ptr.lastIdx = -1; ptr.touched = null;
+  if (wasDrag) renderHud();   // 拖动标记后要刷新“清标记”按钮的可用状态
+  if (idx < 0 || wasDrag || wasLong) return;
+  if (state.over || state.busy) return;
+
+  const now = Date.now();
+
+  // 已确定的猫、已判定错误的红叉：点、双击、长按都无效
+  if (state.marks[idx] === 1 || state.marks[idx] === 3) return;
+
+  if (lastTap.idx === idx && now - lastTap.t < TAP_GAP){
+    lastTap.idx = -1;
+    placeCow(idx);            // 双击 → 放猫
+  } else {
+    toggleMark(idx);          // 单击 → 打 ✕ / 取消 ✕
+    lastTap.idx = idx; lastTap.t = now;
+  }
+});
+
+window.addEventListener('pointercancel', () => {
+  clearTimeout(ptr.timer);
+  ptr.idx = -1; ptr.dragging = false; ptr.longFired = false; ptr.lastIdx = -1; ptr.touched = null;
+});
+
+boardEl.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const cell = e.target.closest ? e.target.closest('.cell') : null;
+  if (cell) placeCow(+cell.dataset.i);
+});
+
+$('#btnClear').onclick = clearMarks;
+$('#btnHint').onclick = giveHint;
+$('#btnFind').onclick = findCow;
+$('#btnRestart').onclick = restartLevel;
+$('#btnHelp').onclick = () => showHelp(false);
+$('#btnLevels').onclick = showLevels;
+$('#btnPalette').onclick = showPaletteMenu;
+
+$('#optAuto').checked = state.autoMark;
+$('#optAuto').onchange = e => {
+  state.autoMark = e.target.checked;
+  save.autoMark = state.autoMark;
+  persist();
+  toast(state.autoMark ? '放猫后自动打 ✕' : '已关闭自动标记');
+};
+
+const soundBtn = $('#btnSound');
+function syncSoundBtn(){
+  soundBtn.textContent = state.muted ? '🔇' : '🔊';
+  soundBtn.title = state.muted ? '音效已关闭' : '音效已开启';
+  soundBtn.classList.toggle('on', !state.muted);
+}
+soundBtn.onclick = showSfxMenu;
+syncSoundBtn();
+
+$('#btnDaily').onclick = () => {
+  if (state.mode === 'daily'){ toast('已经在每日挑战中'); return; }
+  state.mode = 'daily';
+  startLevel();
+};
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') hideModal();
+  if (e.key === 'h') giveHint();
+  if (e.key === 'f') findCow();
+  if (e.key === 'r' && !e.ctrlKey && !e.metaKey) restartLevel();
+});
+
+/* =========================================================================
+   13. 启动
+   ========================================================================= */
+renderRulebar();
+setTimeout(loadMeow, 260);
+applyPalette(currentPaletteColors());
+// 优先回到“上次所在关卡”，并夹在已解锁范围内
+(function boot(){
+  let opened = false;
+
+  // 支持 ?level=N 直接跳到指定关卡（LuCI 里也提供这个入口）
+  function applyUrlLevel(){
+    try {
+      const lv = parseInt(new URLSearchParams(location.search).get('level'), 10);
+      if (lv && lv > 0){
+        save.level = Math.max(save.level || 1, lv);
+        save.current = lv;
+        save.stamp = Date.now();
+        persist();
+        pushProgress();
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  function open(){
+    if (opened) return;
+    opened = true;
+    state.level = Math.min(save.current || save.level || 1, save.level || 1);
+    state.mode = 'main';
+    startLevel();
+  }
+
+  const timer = setTimeout(function(){ applyUrlLevel(); open(); }, 600);   // 路由器没响应也不卡住启动
+  pullProgress().then(
+    function(){ clearTimeout(timer); applyUrlLevel(); open(); },
+    function(){ clearTimeout(timer); applyUrlLevel(); open(); }
+  );
+})();
+</script>
+</body>
+</html>

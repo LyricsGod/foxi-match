@@ -1,0 +1,25 @@
+#!/bin/sh
+# 设置游戏关卡：/cgi-bin/catfind-setlevel?level=N
+# 供 LuCI 页面调用（同源 80 端口）
+
+LV=$(printf '%s' "$QUERY_STRING" | sed -n 's/.*level=\([0-9]\{1,4\}\).*/\1/p')
+
+echo "Content-Type: application/json; charset=utf-8"
+echo "Cache-Control: no-store, max-age=0"
+echo ""
+
+if [ -z "$LV" ]; then
+	echo '{"ok":false,"error":"missing level"}'
+	exit 0
+fi
+
+if [ "$LV" -lt 1 ] || [ "$LV" -gt 999 ]; then
+	echo '{"ok":false,"error":"out of range"}'
+	exit 0
+fi
+
+STAMP=$(($(date +%s) * 1000))
+printf '{"level":%s,"current":%s,"best":{},"stamp":%s}\n' "$LV" "$LV" "$STAMP" > /etc/catfind-progress.json
+chmod 644 /etc/catfind-progress.json 2>/dev/null
+
+echo "{\"ok\":true,\"level\":$LV}"

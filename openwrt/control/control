@@ -1,0 +1,11 @@
+Package: luci-app-catfind
+Version: 1.2.1
+Depends: luci-compat, luci-lua-runtime
+Source: local
+Section: luci
+Priority: optional
+Maintainer: local <root@localhost>
+Architecture: all
+Installed-Size: 112
+Description: 找猫游戏（逻辑解谜）
+ 带 LuCI 管理界面：开关、自定义端口、跳关；最大 12×12 且保证唯一解。

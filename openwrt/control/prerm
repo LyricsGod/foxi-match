@@ -1,0 +1,6 @@
+#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] || {
+	/etc/init.d/catfind stop
+	/etc/init.d/catfind disable
+}
+exit 0

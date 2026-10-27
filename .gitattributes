@@ -1,0 +1,5 @@
+# 统一 LF：包内的 init 脚本 / CGI 脚本在路由器上必须是 LF 换行，
+# 如果按 Windows 的 CRLF 提交，uhttpd 会报 "#!/bin/sh not found"。
+* text=auto eol=lf
+
+*.ipk binary

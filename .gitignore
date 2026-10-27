@@ -1,0 +1,12 @@
+# 构建产物：index.html 的副本，由 openwrt/build_ipk.py 从仓库根目录自动复制
+openwrt/files/www/catfind/index.html
+
+# Python
+__pycache__/
+*.py[cod]
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
